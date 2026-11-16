@@ -45,7 +45,7 @@ export function TerritorialMapInternal({
             weight: 2.5,
             opacity: 0.85,
             fillColor: '#fce7f3',
-            fillOpacity: 0.18,
+            fillOpacity: 0.15,
             dashArray: '5, 6',
           },
         }).addTo(map);
@@ -61,7 +61,6 @@ export function TerritorialMapInternal({
     }
 
     return () => {
-      // Cleanup al desmontar
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -80,15 +79,18 @@ export function TerritorialMapInternal({
 
       const isSelected = rep.id === selectedReportId;
 
-      // Colores de estado:
-      // En proceso / Pendiente: #EF4444 (Rojo)
-      // Faena programada: #F97316 (Naranja)
-      // Resuelto: #22C55E (Verde claro)
-      let bgStyle = 'background-color: #EF4444; border-color: #FEE2E2;';
-      if (rep.status === 'faena_programada') {
-        bgStyle = 'background-color: #F97316; border-color: #FFEDD5;';
+      // Colores de estado estandarizados según paleta oficial:
+      // Resuelto: #588157 (Verde claro / Salvia)
+      // Faena programada: #E4981E (Naranja / Ámbar)
+      // En evaluación: #E28A85 (Coral rojizo)
+      // Recibido: #d30684 (Magenta / Lino)
+      let bgStyle = 'background-color: #d30684; border-color: #F3E8E8;';
+      if (rep.status === 'en_evaluacion') {
+        bgStyle = 'background-color: #E28A85; border-color: #FAF8F5;';
+      } else if (rep.status === 'faena_programada') {
+        bgStyle = 'background-color: #E4981E; border-color: #FFFBEB;';
       } else if (rep.status === 'resuelto') {
-        bgStyle = 'background-color: #22C55E; border-color: #DCFCE7;';
+        bgStyle = 'background-color: #588157; border-color: #DAE3D9;';
       }
 
       const scaleClass = isSelected ? 'transform: scale(1.3); box-shadow: 0 0 0 4px rgba(211, 6, 132, 0.4);' : '';
@@ -102,7 +104,7 @@ export function TerritorialMapInternal({
 
       const iconHtml = `
         <div style="display:flex; align-items:center; justify-content:center;">
-          <div style="width:26px; height:26px; border-radius:9999px; ${bgStyle} ${scaleClass} border-width:2px; display:flex; align-items:center; justify-content:center; color:#fff; cursor:pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);">
+          <div style="width:26px; height:26px; border-radius:9999px; ${bgStyle} ${scaleClass} border-width:2px; display:flex; align-items:center; justify-content:center; color:#fff; cursor:pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.25);">
             ${iconSvg}
           </div>
         </div>
@@ -136,24 +138,6 @@ export function TerritorialMapInternal({
   return (
     <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-[#D3B9B9] shadow-sm">
       <div ref={mapContainerRef} className="w-full h-full" />
-      {/* Leyenda del mapa */}
-      <div className="absolute bottom-3 right-3 z-[400] bg-white/95 backdrop-blur-sm p-3.5 rounded-2xl border border-[#D3B9B9] shadow-md text-xs space-y-1.5 font-medium text-[#1a2527]">
-        <div className="font-bold text-[11px] uppercase tracking-wider mb-1 text-[#1a2527]">
-          Estados de Incidencias
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="w-3 h-3 rounded-full bg-[#EF4444] inline-block shrink-0 shadow-sm" />
-          <span className="text-slate-700">En proceso / Pendiente (Rojo)</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="w-3 h-3 rounded-full bg-[#F97316] inline-block shrink-0 shadow-sm" />
-          <span className="text-slate-700">Faena Programada (Naranja)</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="w-3 h-3 rounded-full bg-[#22C55E] inline-block shrink-0 shadow-sm" />
-          <span className="text-slate-700">Resuelto / Recuperado (Verde claro)</span>
-        </div>
-      </div>
     </div>
   );
 }

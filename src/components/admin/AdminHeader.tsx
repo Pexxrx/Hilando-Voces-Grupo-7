@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { useAdminSession } from './AdminSessionContext';
 
@@ -17,59 +18,63 @@ export function AdminHeader({
   refreshing,
   totalAlerts = 0,
 }: AdminHeaderProps) {
-  const { profile, activeTab } = useAdminSession();
+  const pathname = usePathname();
+  const { profile } = useAdminSession();
 
   const getSectionTitle = () => {
-    switch (activeTab) {
-      case 'incidencias':
-        return {
-          title: 'Bandeja de Incidencias',
-          subtitle: 'Expedientes ciudadanos y triaje de campo sin datos personales',
-        };
-      case 'faenas':
-        return {
-          title: 'Planificador de Faenas Barriales',
-          subtitle: 'Agenda comunitaria mensual, responsables y fichas técnicas',
-        };
-      case 'ahp':
-        return {
-          title: 'Priorización Multicriterio AHP',
-          subtitle: 'Modelo científico de Saaty para ranking objetivo en San Juan de Lurigancho',
-        };
-      case 'voluntarios':
-        return {
-          title: 'Red de Voluntarios y Coordinación',
-          subtitle: 'Padrón de vecinos y brigadistas con alias comunitarios y herramientas',
-        };
-      case 'rendicion':
-        return {
-          title: 'Rendición de Cuentas Social',
-          subtitle: 'Bitácora pública de transformaciones comunitarias (Antes y Después)',
-        };
-      case 'equipo':
-        return {
-          title: 'Equipo de Lideresas y Gobernanza',
-          subtitle: 'Estructura organizativa y matriz formal de roles y permisos',
-        };
-      default:
-        return {
-          title: 'Centro de Mando Territorial',
-          subtitle: 'Monitoreo barrial geocercado para San Juan de Lurigancho (SJL)',
-        };
+    if (pathname.includes('/admin/bandeja')) {
+      return {
+        title: 'Bandeja de Incidencias',
+        subtitle: 'Expedientes ciudadanos y triaje de campo sin datos personales',
+      };
     }
+    if (pathname.includes('/admin/calendario')) {
+      return {
+        title: 'Planificador de Faenas Barriales',
+        subtitle: 'Agenda comunitaria mensual, responsables y fichas técnicas',
+      };
+    }
+    if (pathname.includes('/admin/ahp')) {
+      return {
+        title: 'Priorización Multicriterio AHP',
+        subtitle: 'Modelo científico de Saaty para ranking objetivo en San Juan de Lurigancho',
+      };
+    }
+    if (pathname.includes('/admin/voluntarios')) {
+      return {
+        title: 'Red de Voluntarios y Coordinación',
+        subtitle: 'Padrón de vecinos y brigadistas con alias comunitarios y herramientas',
+      };
+    }
+    if (pathname.includes('/admin/rendicion')) {
+      return {
+        title: 'Rendición de Cuentas Social',
+        subtitle: 'Bitácora pública de transformaciones comunitarias (Antes y Después)',
+      };
+    }
+    if (pathname.includes('/admin/equipo')) {
+      return {
+        title: 'Equipo de Lideresas y Gobernanza',
+        subtitle: 'Estructura organizativa y matriz formal de roles y permisos (RBAC)',
+      };
+    }
+    return {
+      title: 'Centro de Mando Territorial',
+      subtitle: 'Monitoreo barrial geocercado para San Juan de Lurigancho (SJL)',
+    };
   };
 
   const { title, subtitle } = getSectionTitle();
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#D3B9B9]/50 px-4 sm:px-6 py-3 shadow-xs">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#D3B9B9]/50 px-4 sm:px-6 py-3 shadow-2xs">
       <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto w-full">
         {/* Lado izquierdo: Botón Menú Siempre Disponible + Título de Sección */}
         <div className="flex items-center space-x-3">
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="px-3.5 py-2 rounded-2xl text-slate-800 hover:text-[#d30684] hover:bg-[#FAF8F5] border border-[#D3B9B9] flex items-center space-x-2 transition-all cursor-pointer shadow-xs group"
+            className="px-3.5 py-2 rounded-2xl text-slate-800 hover:text-[#d30684] hover:bg-[#FAF8F5] border border-[#D3B9B9] flex items-center space-x-2 transition-all cursor-pointer shadow-2xs group"
             title="Abrir menú de módulos"
           >
             <GoogleIcon name="menu" size={20} className="text-[#d30684] group-hover:scale-110 transition-transform" />
@@ -98,7 +103,7 @@ export function AdminHeader({
             type="button"
             onClick={onRefresh}
             disabled={refreshing}
-            className="p-2 sm:px-3 sm:py-2 rounded-2xl border border-[#D3B9B9] hover:border-[#d30684] hover:bg-[#FAF8F5] text-xs font-bold text-[#1a2527] flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+            className="p-2 sm:px-3 sm:py-2 rounded-2xl border border-[#D3B9B9] hover:border-[#d30684] hover:bg-[#FAF8F5] text-xs font-bold text-[#1a2527] flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-2xs"
             title="Actualizar datos"
           >
             <GoogleIcon

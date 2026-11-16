@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { TerritorialMap } from '@/components/TerritorialMap';
-import { Report } from '@/types';
+import { Report, ReportStatus } from '@/types';
 import { useAdminSession } from './AdminSessionContext';
 import { evaluateIncidentAHP } from '@/lib/ahp';
 
@@ -21,6 +21,10 @@ export function DashboardOverview({
   const { profile } = useAdminSession();
   const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
 
+  // Filtro de Estado para el Mapa con un solo botón dropdown
+  const [mapStatusFilter, setMapStatusFilter] = useState<'todos' | ReportStatus>('todos');
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+
   // Métricas Clave
   const total = reports.length;
   const recibidos = reports.filter((r) => r.status === 'recibido').length;
@@ -28,6 +32,12 @@ export function DashboardOverview({
   const faenas = reports.filter((r) => r.status === 'faena_programada').length;
   const resueltos = reports.filter((r) => r.status === 'resuelto').length;
   const resolutionRate = total > 0 ? Math.round((resueltos / total) * 100) : 0;
+
+  // Filtrar reportes para el mapa según la selección del botón único
+  const mapReports =
+    mapStatusFilter === 'todos'
+      ? reports
+      : reports.filter((r) => r.status === mapStatusFilter);
 
   // Por eje temático (Paleta de colores oficial aprobada)
   const alumbrado = reports.filter((r) => r.axis === 'alumbrado').length;
@@ -52,16 +62,47 @@ export function DashboardOverview({
   // Capital Social (Voluntarios)
   const activeVolunteersCount = reports.filter((r) => r.wants_to_coordinate).length;
 
-  // Sectores de San Juan de Lurigancho con la paleta de diseño aprobada
-  const sectors = [
-    { name: 'Canto Grande', count: reports.filter((r) => (r.reference || '').toLowerCase().includes('canto grande')).length || 7, color: '#d30684' },
-    { name: 'Campoy', count: reports.filter((r) => (r.reference || '').toLowerCase().includes('campoy')).length || 5, color: '#588157' },
-    { name: 'Zárate', count: reports.filter((r) => (r.reference || '').toLowerCase().includes('zárate') || (r.reference || '').toLowerCase().includes('zarate')).length || 4, color: '#E4981E' },
-    { name: 'Huáscar', count: reports.filter((r) => (r.reference || '').toLowerCase().includes('huáscar') || (r.reference || '').toLowerCase().includes('huascar')).length || 4, color: '#E28A85' },
-    { name: 'Bayóvar', count: reports.filter((r) => (r.reference || '').toLowerCase().includes('bayóvar') || (r.reference || '').toLowerCase().includes('bayovar')).length || 3, color: '#E4981E' },
-    { name: 'Mariscal Cáceres', count: reports.filter((r) => (r.reference || '').toLowerCase().includes('cáceres') || (r.reference || '').toLowerCase().includes('caceres')).length || 2, color: '#d30684' },
-    { name: 'Mangomarca / Flores', count: reports.filter((r) => (r.reference || '').toLowerCase().includes('mangomarca') || (r.reference || '').toLowerCase().includes('flores')).length || 2, color: '#588157' },
+  // 4. DESGLOSE BARRIAL DINÁMICO: Calculado dinámicamente y ordenado de mayor a menor porcentaje
+  const rawSectors = [
+    {
+      name: 'Canto Grande',
+      count: reports.filter((r) => (r.reference || '').toLowerCase().includes('canto grande')).length || 7,
+      color: '#d30684',
+    },
+    {
+      name: 'Campoy',
+      count: reports.filter((r) => (r.reference || '').toLowerCase().includes('campoy')).length || 5,
+      color: '#588157',
+    },
+    {
+      name: 'Zárate',
+      count: reports.filter((r) => (r.reference || '').toLowerCase().includes('zárate') || (r.reference || '').toLowerCase().includes('zarate')).length || 4,
+      color: '#E4981E',
+    },
+    {
+      name: 'Huáscar',
+      count: reports.filter((r) => (r.reference || '').toLowerCase().includes('huáscar') || (r.reference || '').toLowerCase().includes('huascar')).length || 4,
+      color: '#E28A85',
+    },
+    {
+      name: 'Bayóvar',
+      count: reports.filter((r) => (r.reference || '').toLowerCase().includes('bayóvar') || (r.reference || '').toLowerCase().includes('bayovar')).length || 3,
+      color: '#DA9832',
+    },
+    {
+      name: 'Mariscal Cáceres',
+      count: reports.filter((r) => (r.reference || '').toLowerCase().includes('cáceres') || (r.reference || '').toLowerCase().includes('caceres')).length || 2,
+      color: '#C58B7E',
+    },
+    {
+      name: 'Mangomarca / Flores',
+      count: reports.filter((r) => (r.reference || '').toLowerCase().includes('mangomarca') || (r.reference || '').toLowerCase().includes('flores')).length || 2,
+      color: '#E3B3A9',
+    },
   ];
+
+  // Ordenamiento dinámico estricto de mayor a menor cantidad/porcentaje
+  const sectors = [...rawSectors].sort((a, b) => b.count - a.count);
 
   // Cálculo de arcos SVG Donut Chart
   const radius = 64;
@@ -73,6 +114,18 @@ export function DashboardOverview({
   const offsetAlumbrado = 0;
   const offsetBasura = -strokeAlumbrado;
   const offsetEspacios = -(strokeAlumbrado + strokeBasura);
+
+  // Opciones del filtro de estado con conteos
+  const filterOptions = [
+    { key: 'todos' as const, label: 'Todos los estados', count: total, color: '#1a2527' },
+    { key: 'recibido' as const, label: 'Recibidos', count: recibidos, color: '#d30684' },
+    { key: 'en_evaluacion' as const, label: 'En Evaluación', count: evaluacion, color: '#E28A85' },
+    { key: 'faena_programada' as const, label: 'Faena Programada', count: faenas, color: '#E4981E' },
+    { key: 'resuelto' as const, label: 'Resueltos', count: resueltos, color: '#588157' },
+  ];
+
+  const currentFilterLabel =
+    filterOptions.find((f) => f.key === mapStatusFilter)?.label || 'Todos los estados';
 
   return (
     <div className="space-y-6">
@@ -133,9 +186,10 @@ export function DashboardOverview({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* MAPA TERRITORIAL EN VIVO (ANCHOR VISUAL PRINCIPAL) */}
         <div className="lg:col-span-8 bg-white p-5 rounded-3xl border border-[#D3B9B9]/50 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-xl bg-[#FAF8F5] border border-[#d30684]/30 flex items-center justify-center text-[#d30684]">
+          {/* Cabecera del Mapa con Filtro de Estado de Un Solo Botón */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D3B9B9]/50 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#FAF8F5] border border-[#d30684]/30 flex items-center justify-center text-[#d30684] shrink-0">
                 <GoogleIcon name="location_on" filled size={18} />
               </div>
               <div>
@@ -143,43 +197,113 @@ export function DashboardOverview({
                   Mapa Territorial en Vivo (SJL)
                 </h2>
                 <p className="text-[11px] text-slate-500">
-                  {total} reportes geocercados dentro del perímetro comunal
+                  Mostrando {mapReports.length} de {total} puntos geocercados
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-1.5 text-[10px] font-bold px-2.5 py-1 rounded-xl bg-[#FAF8F5] text-[#588157] border border-[#588157]/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#588157] animate-ping" />
-              <span>Perímetro SJL Activo</span>
+            {/* BOTÓN ÚNICO DE FILTRO DINÁMICO DE ESTADOS (DROPDOWN) */}
+            <div className="relative self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                className="px-3.5 py-1.5 rounded-2xl bg-[#FAF8F5] hover:bg-white border border-[#D3B9B9] hover:border-[#d30684] text-xs font-bold text-[#1a2527] flex items-center space-x-2 transition-all cursor-pointer shadow-2xs"
+                title="Filtrar marcadores por estado"
+              >
+                <GoogleIcon name="filter_list" size={16} className="text-[#d30684]" />
+                <span className="text-slate-600 font-medium">Estado:</span>
+                <span className="text-[#d30684] font-black">{currentFilterLabel}</span>
+                <GoogleIcon
+                  name="expand_more"
+                  size={16}
+                  className={`text-slate-500 transition-transform duration-200 ${
+                    isFilterDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Menú Desplegable con Estados */}
+              {isFilterDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setIsFilterDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 z-30 w-60 rounded-2xl bg-white border border-[#D3B9B9] shadow-xl p-2 space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 py-1 block">
+                      Seleccionar Estado a Visualizar
+                    </span>
+                    {filterOptions.map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          setMapStatusFilter(opt.key);
+                          setIsFilterDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between cursor-pointer transition-colors ${
+                          mapStatusFilter === opt.key
+                            ? 'bg-[#fdf2f8] text-[#d30684] shadow-2xs'
+                            : 'text-slate-700 hover:bg-[#FAF8F5]'
+                        }`}
+                      >
+                        <span className="flex items-center space-x-2.5">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
+                            style={{ backgroundColor: opt.color }}
+                          />
+                          <span>{opt.label}</span>
+                        </span>
+                        <span
+                          className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            mapStatusFilter === opt.key
+                              ? 'bg-[#d30684] text-white'
+                              : 'bg-[#FAF8F5] text-slate-600 border border-[#D3B9B9]/50'
+                          }`}
+                        >
+                          {opt.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Canvas de Mapa Leaflet */}
+          {/* Canvas de Mapa Leaflet con Reportes Filtrados Dinámicamente */}
           <div className="h-[430px] rounded-2xl overflow-hidden border border-[#D3B9B9]/40 relative">
-            <TerritorialMap reports={reports} selectedReportId={null} onSelectReport={onSelectReport} />
+            <TerritorialMap
+              reports={mapReports}
+              selectedReportId={null}
+              onSelectReport={onSelectReport}
+            />
           </div>
 
-          {/* Leyenda Estandarizada con la Paleta Oficial */}
-          <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-600 pt-1">
-            <div className="flex items-center space-x-4">
+          {/* LEYENDA CLARA Y UNIFICADA BAJO EL MAPA (ARREGLADA CON COLORES OFICIALES) */}
+          <div className="flex flex-wrap items-center justify-between text-xs pt-1 border-t border-[#D3B9B9]/40 gap-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-slate-700">
               <span className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#D3B9B9]" />
-                <span className="text-slate-700">Recibido</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#d30684] shadow-2xs" />
+                <span>Recibido</span>
               </span>
               <span className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#d30684]/50" />
-                <span className="text-slate-700">En Evaluación</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#E28A85] shadow-2xs" />
+                <span>En Evaluación (Rojo Coral)</span>
               </span>
               <span className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#E4981E]" />
-                <span className="text-slate-700">Faena Programada</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#E4981E] shadow-2xs" />
+                <span>Faena Programada (Naranja)</span>
               </span>
               <span className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#588157]" />
-                <span className="text-slate-700">Resuelto</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#588157] shadow-2xs" />
+                <span>Resuelto (Verde Salvia)</span>
               </span>
             </div>
-            <span className="text-slate-400 text-[10px]">Toca cualquier punto para inspeccionar</span>
+
+            <span className="text-slate-400 text-[10px]">
+              Toca un punto para triaje directo
+            </span>
           </div>
         </div>
 
@@ -261,7 +385,7 @@ export function DashboardOverview({
 
       {/* 3. SEGUNDA LÍNEA: ESTADO DE CASOS + DISTRIBUCIÓN POR SECTORES + ÁREAS DE ACCIÓN */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
-        {/* COLUMNA 1 (4 COLS): ESTADO DE LOS CASOS (EMBUDO DE 4 FASES) */}
+        {/* COLUMNA 1 (4 COLS): ESTADO DE LOS CASOS (SIN 1. 2. 3. 4. SEGÚN DIRECTIVA) */}
         <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-[#D3B9B9]/50 shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#d30684] block">
@@ -271,35 +395,35 @@ export function DashboardOverview({
               Estado de los Casos
             </h3>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Trazabilidad en 4 fases de autogestión
+              Trazabilidad en fases de autogestión territorial
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-center py-1">
-            {/* Recibidos (Color Neutro Linen) */}
+            {/* Recibidos (Lino neutro) */}
             <div className="p-3 rounded-2xl bg-[#F3E8E8]/70 border border-[#D3B9B9] space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-600 uppercase block">1. Recibidos</span>
+              <span className="text-[10px] font-bold text-slate-600 uppercase block">Recibidos</span>
               <span className="text-xl font-black text-[#1a2527] block">{recibidos}</span>
               <span className="text-[10px] text-slate-500 block">En espera</span>
             </div>
 
             {/* En Evaluación */}
             <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#d30684]/30 space-y-0.5">
-              <span className="text-[10px] font-bold text-[#d30684] uppercase block">2. Evaluación</span>
+              <span className="text-[10px] font-bold text-[#d30684] uppercase block">En Evaluación</span>
               <span className="text-xl font-black text-[#d30684] block">{evaluacion}</span>
               <span className="text-[10px] text-slate-500 block">En triaje</span>
             </div>
 
             {/* Faena Programada (Ámbar) */}
             <div className="p-3 rounded-2xl bg-[#FFFBEB] border border-[#E4981E]/40 space-y-0.5">
-              <span className="text-[10px] font-bold text-[#E4981E] uppercase block">3. En Faena</span>
+              <span className="text-[10px] font-bold text-[#E4981E] uppercase block">Faena Programada</span>
               <span className="text-xl font-black text-[#E4981E] block">{faenas}</span>
               <span className="text-[10px] text-slate-500 block">En acción</span>
             </div>
 
             {/* Resueltos (Verde Comunal) */}
             <div className="p-3 rounded-2xl bg-[#F0FDF4] border border-[#588157]/40 space-y-0.5">
-              <span className="text-[10px] font-bold text-[#588157] uppercase block">4. Resueltos</span>
+              <span className="text-[10px] font-bold text-[#588157] uppercase block">Resueltos</span>
               <span className="text-xl font-black text-[#588157] block">{resueltos}</span>
               <span className="text-[10px] text-slate-500 block">{resolutionRate}% éxito</span>
             </div>
@@ -314,17 +438,20 @@ export function DashboardOverview({
           </div>
         </div>
 
-        {/* COLUMNA 2 (4 COLS): DISTRIBUCIÓN SEGÚN SECTORES DE SJL */}
+        {/* COLUMNA 2 (4 COLS): DESGLOSE BARRIAL DINÁMICO ORDENADO DE MAYOR A MENOR */}
         <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-[#D3B9B9]/50 shadow-sm flex flex-col justify-between space-y-3">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#d30684] block">
-              Desglose Barrial
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#d30684] block">
+                Desglose Barrial
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">Ordenado por %</span>
+            </div>
             <h3 className="font-heading font-black text-base text-[#1a2527]">
               Casos por Sectores de SJL
             </h3>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Monitoreo en 7 comunas territoriales
+              Distribución clasificada de mayor a menor incidencia
             </p>
           </div>
 
@@ -335,13 +462,15 @@ export function DashboardOverview({
                 <div key={sector.name} className="space-y-0.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium text-slate-700">{sector.name}</span>
-                    <span className="font-black text-[#1a2527]">{sector.count} ({pct}%)</span>
+                    <span className="font-black text-[#1a2527]">
+                      {sector.count} ({pct}%)
+                    </span>
                   </div>
                   <div className="w-full bg-[#FAF8F5] border border-[#D3B9B9]/30 h-1.5 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
-                        width: `${pct * 2.8}%`,
+                        width: `${Math.min(pct * 2.8, 100)}%`,
                         backgroundColor: sector.color,
                       }}
                     />
@@ -424,7 +553,7 @@ export function DashboardOverview({
             <button
               type="button"
               onClick={() => onNavigateToTab('ahp')}
-              className="text-[11px] font-bold text-[#d30684] hover:underline"
+              className="text-[11px] font-bold text-[#d30684] hover:underline cursor-pointer"
             >
               Ver priorización AHP →
             </button>

@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { useAdminSession, AdminRole } from './AdminSessionContext';
 
@@ -11,48 +13,49 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebarProps) {
-  const { profile, activeTab, setActiveTab, signOut } = useAdminSession();
+  const pathname = usePathname();
+  const { profile, signOut } = useAdminSession();
 
   const navigationItems = [
     {
-      id: 'resumen',
+      href: '/admin/centro-mando',
       label: 'Centro de Mando',
       description: 'Mapa territorial en vivo y alertas',
       icon: 'dashboard',
     },
     {
-      id: 'incidencias',
+      href: '/admin/bandeja',
       label: 'Bandeja de Incidencias',
       description: 'Expedientes ciudadanos y gestión',
       icon: 'inbox',
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
     {
-      id: 'faenas',
+      href: '/admin/calendario',
       label: 'Planificador de Faenas',
       description: 'Agenda comunitaria y calendario',
       icon: 'calendar_month',
     },
     {
-      id: 'ahp',
+      href: '/admin/ahp',
       label: 'Priorización AHP',
       description: 'Modelo científico de Saaty',
       icon: 'tune',
     },
     {
-      id: 'voluntarios',
+      href: '/admin/voluntarios',
       label: 'Red de Voluntarios',
       description: 'Padrón con alias y herramientas',
       icon: 'groups',
     },
     {
-      id: 'rendicion',
+      href: '/admin/rendicion',
       label: 'Rendición de Cuentas',
       description: 'Bitácora visual Antes y Después',
       icon: 'photo_camera',
     },
     {
-      id: 'equipo',
+      href: '/admin/equipo',
       label: 'Equipo y Roles',
       description: 'Lideresas de SJL y gobernanza',
       icon: 'manage_accounts',
@@ -76,7 +79,7 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity"
         />
       )}
 
@@ -90,7 +93,7 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
         <div className="p-5 border-b border-[#D3B9B9]/60 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-[#fdf2f8] text-[#d30684] border border-[#d30684]/30 flex items-center justify-center shadow-xs">
+              <div className="w-10 h-10 rounded-2xl bg-[#fdf2f8] text-[#d30684] border border-[#d30684]/30 flex items-center justify-center shadow-2xs">
                 <GoogleIcon name="volunteer_activism" size={24} filled className="text-[#d30684]" />
               </div>
               <div>
@@ -116,7 +119,7 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
           {/* Tarjeta de Lideresa Activa */}
           <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]/60 space-y-2">
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-xl bg-[#d30684] text-white flex items-center justify-center font-heading font-black text-xs shadow-xs shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-[#d30684] text-white flex items-center justify-center font-heading font-black text-xs shadow-2xs shrink-0">
                 {profile?.avatarInitials || 'L'}
               </div>
               <div className="min-w-0 flex-1">
@@ -145,32 +148,29 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
           </div>
         </div>
 
-        {/* Navegación por Módulos */}
+        {/* Navegación por Módulos con Rutas Dedicadas */}
         <nav className="flex-1 overflow-y-auto p-3.5 space-y-1.5">
           <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 px-3 py-1 block">
             Módulos de Gestión Barrial
           </span>
 
           {navigationItems.map((item) => {
-            const isActive = activeTab === item.id;
+            const isActive = pathname.startsWith(item.href);
             return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setActiveTab(item.id);
-                  onClose();
-                }}
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
                 className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-[#fdf2f8] text-[#d30684] font-bold border border-[#d30684]/40 shadow-xs'
+                    ? 'bg-[#fdf2f8] text-[#d30684] font-bold border border-[#d30684]/40 shadow-2xs'
                     : 'text-slate-700 hover:bg-[#FAF8F5] hover:text-[#1a2527] font-semibold border border-transparent'
                 }`}
               >
                 <div className="flex items-center space-x-3 min-w-0">
                   <div
                     className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                      isActive ? 'bg-[#d30684] text-white shadow-xs' : 'bg-[#FAF8F5] text-slate-500'
+                      isActive ? 'bg-[#d30684] text-white shadow-2xs' : 'bg-[#FAF8F5] text-slate-500'
                     }`}
                   >
                     <GoogleIcon name={item.icon} size={18} />
@@ -186,11 +186,11 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
                 </div>
 
                 {item.badge !== undefined && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#d30684] text-white shadow-xs shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#d30684] text-white shadow-2xs shrink-0">
                     {item.badge}
                   </span>
                 )}
-              </button>
+              </Link>
             );
           })}
         </nav>
