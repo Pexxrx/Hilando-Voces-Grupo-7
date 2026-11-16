@@ -1,26 +1,83 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* ============================================================
+     Paleta Oficial: Warmi Hilando Voces (Color Principal: #d30684)
+     Sin verdes petrol - Paleta Cálida & Cívica
+     ============================================================ */
+  --primary: #d30684;        /* Color Principal Magenta */
+  --primary-hover: #bd0474;  /* Magenta intenso para hover */
+  --primary-light: #fdf2f8;  /* Fondo suave rosado/blush */
+  --primary-border: #f472b6; /* Borde magenta suave */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --neutral-dark: #1a2527;   /* Texto principal charcoal de alta legibilidad */
+  --neutral-muted: #52606d;  /* Texto secundario */
+  --ochre-warm: #E4981E;     /* Mostaza dorada de acento */
+  --rose-coral: #E28A85;     /* Terracota coral */
+  --mauve-soft: #D3B9B9;     /* Malva suave para bordes */
+  --cream-blush: #F3E8E8;    /* Crema blush */
+  --canvas-bg: #FAF8F5;      /* Fondo papel artesanal orgánico */
+  --surface-card: #FFFFFF;   /* Blanco puro para tarjetas */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--canvas-bg);
+  color: var(--neutral-dark);
+  font-family: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+  letter-spacing: -0.011em;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, .font-heading {
+  font-family: var(--font-outfit), var(--font-plus-jakarta), sans-serif;
+}
+
+/* Evitar zoom molesto en inputs en iPhone/Android en pantallas móviles */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Touch targets accesibles para personas mayores */
+button, a {
+  touch-action: manipulation;
+}
+
+/* Scrollbar sutil y artesanal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D3B9B9;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d30684;
+}
+
+/* Mapas Leaflet integrados con la paleta orgánica */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  background-color: #E7E7E5;
+  border-radius: 1rem;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #FFFFFF !important;
+  color: #1a2527 !important;
+  border: 1px solid #D3B9B9 !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 25px -5px rgba(211, 6, 132, 0.15) !important;
+  padding: 4px !important;
+}
+
+.leaflet-popup-tip {
+  background: #FFFFFF !important;
 }
