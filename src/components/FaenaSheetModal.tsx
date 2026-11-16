@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Printer, X, Calendar, MapPin, Users, CheckSquare, Wrench, FileText, Phone } from 'lucide-react';
+import { GoogleIcon } from '@/components/GoogleIcon';
 import { Report } from '@/types';
 
 interface FaenaSheetModalProps {
@@ -13,7 +13,7 @@ interface FaenaSheetModalProps {
 export function FaenaSheetModal({ report, onClose, onScheduleFaena }: FaenaSheetModalProps) {
   const [faenaDate, setFaenaDate] = useState('');
   const [meetingPoint, setMeetingPoint] = useState(report.reference || 'Punto central de la comunidad');
-  const [materials, setMaterials] = useState<string[]>([
+  const [materials] = useState<string[]>([
     'Bolsas gruesas de basura de 140 litros',
     'Escobas de cerda dura y palas',
     'Guantes de protección de nitrilo',
@@ -34,14 +34,14 @@ export function FaenaSheetModal({ report, onClose, onScheduleFaena }: FaenaSheet
         {/* Cabecera del modal (oculta al imprimir) */}
         <div className="bg-[#FAF8F5] p-6 flex items-center justify-between border-b border-[#D3B9B9]/70 print:hidden">
           <div className="flex items-center space-x-2">
-            <FileText className="w-5 h-5 text-[#d30684]" />
+            <GoogleIcon name="description" filled size={20} className="text-[#d30684]" />
             <h3 className="font-heading font-bold text-lg text-[#1a2527]">Ficha Técnica de Faena Comunal</h3>
           </div>
           <button
             onClick={onClose}
             className="p-1 rounded-lg text-slate-400 hover:text-[#d30684] hover:bg-[#fdf2f8] transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <GoogleIcon name="close" size={22} />
           </button>
         </div>
 
@@ -94,7 +94,7 @@ export function FaenaSheetModal({ report, onClose, onScheduleFaena }: FaenaSheet
                 <span className="text-slate-600 print:text-amber-800">Dispuesto a apoyar en la organización y logística barrial.</span>
               </div>
               <span className="font-mono font-bold text-sm bg-white print:bg-white px-3 py-1.5 rounded-xl border border-[#D3B9B9] print:border-amber-300 text-[#d30684] print:text-black flex items-center space-x-1">
-                <Phone className="w-3.5 h-3.5 text-[#d30684]" />
+                <GoogleIcon name="call" filled size={16} className="text-[#d30684]" />
                 <span>{report.coordinator_whatsapp}</span>
               </span>
             </div>
@@ -135,7 +135,7 @@ export function FaenaSheetModal({ report, onClose, onScheduleFaena }: FaenaSheet
               <ul className="space-y-2 text-xs text-slate-700 print:text-slate-800">
                 {materials.map((mat, i) => (
                   <li key={i} className="flex items-center space-x-2.5">
-                    <CheckSquare className="w-4 h-4 text-[#d30684] shrink-0" />
+                    <GoogleIcon name="check_box" filled size={18} className="text-[#d30684] shrink-0" />
                     <span>{mat}</span>
                   </li>
                 ))}
@@ -158,7 +158,7 @@ export function FaenaSheetModal({ report, onClose, onScheduleFaena }: FaenaSheet
             onClick={handlePrint}
             className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white hover:bg-[#fdf2f8] text-[#1a2527] hover:text-[#d30684] text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer border border-[#D3B9B9] shadow-sm transition-colors"
           >
-            <Printer className="w-4 h-4 text-[#d30684]" />
+            <GoogleIcon name="print" size={18} className="text-[#d30684]" />
             <span>Imprimir / PDF</span>
           </button>
           <button
@@ -166,7 +166,7 @@ export function FaenaSheetModal({ report, onClose, onScheduleFaena }: FaenaSheet
             onClick={handleConfirmSchedule}
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white text-xs font-bold shadow-md shadow-[#d30684]/20 flex items-center justify-center space-x-2 cursor-pointer transition-all"
           >
-            <Calendar className="w-4 h-4 text-white" />
+            <GoogleIcon name="calendar_month" filled size={18} className="text-white" />
             <span>Marcar "Faena Programada"</span>
           </button>
         </div>

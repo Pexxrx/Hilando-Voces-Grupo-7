@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, KeyRound, AlertCircle, ShieldCheck, ArrowRight } from 'lucide-react';
+import { GoogleIcon } from '@/components/GoogleIcon';
 import { Timeline } from '@/components/Timeline';
 import { Report } from '@/types';
 
@@ -181,7 +181,7 @@ function ConsultContent() {
           >
             <input
               type="text"
-              placeholder="Ej: #HV-SJL-048"
+              placeholder="Ej: #HV-SJL-K7M9X"
               value={ticketInput}
               onChange={(e) => setTicketInput(e.target.value.toUpperCase())}
               className="flex-1 px-4 py-3.5 rounded-xl bg-white border border-[#D3B9B9] font-mono text-base uppercase text-[#1a2527] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d30684] focus:border-[#d30684] transition-all shadow-sm font-bold"
@@ -191,7 +191,7 @@ function ConsultContent() {
               disabled={loading || !ticketInput}
               className="px-6 py-3.5 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-[#d30684]/20"
             >
-              <Search className="w-4 h-4 text-white" />
+              <GoogleIcon name="search" size={18} className="text-white" />
               <span>{loading ? 'Consultando...' : 'Consultar'}</span>
             </button>
           </form>
@@ -211,12 +211,12 @@ function ConsultContent() {
                 disabled={loading || dniInput.length !== 8}
                 className="px-6 py-3.5 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-[#d30684]/20"
               >
-                <KeyRound className="w-4 h-4 text-white" />
+                <GoogleIcon name="vpn_key" filled size={18} className="text-white" />
                 <span>{loading ? 'Recuperando...' : 'Recuperar'}</span>
               </button>
             </div>
             <div className="p-3 bg-[#fdf2f8] border border-[#d30684]/30 rounded-xl text-xs text-[#1a2527] flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-[#d30684] shrink-0" />
+              <GoogleIcon name="verified_user" filled size={18} className="text-[#d30684] shrink-0" />
               <span>Tu DNI solo se usa para buscar el ticket y se descarta de la memoria al instante.</span>
             </div>
           </form>
@@ -241,7 +241,7 @@ function ConsultContent() {
                 >
                   <span className="text-[#d30684]">{t.code}</span>
                   <span className="text-[11px] text-slate-500 capitalize">• {t.axis}</span>
-                  <ArrowRight className="w-3 h-3 text-[#d30684]" />
+                  <GoogleIcon name="arrow_forward" size={14} className="text-[#d30684]" />
                 </button>
               ))}
             </div>
@@ -251,7 +251,7 @@ function ConsultContent() {
 
       {error && (
         <div className="p-4 rounded-2xl bg-[#F3E8E8] border border-[#d30684]/40 text-[#8c472f] text-xs sm:text-sm flex items-center space-x-3">
-          <AlertCircle className="w-5 h-5 text-[#d30684] shrink-0" />
+          <GoogleIcon name="error" filled size={20} className="text-[#d30684] shrink-0" />
           <div>{error}</div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ReportForm } from '@/components/ReportForm';
-import { Search, ArrowRight, HeartHandshake } from 'lucide-react';
+import { GoogleIcon } from '@/components/GoogleIcon';
 
 export default function HomePage() {
   return (
@@ -28,9 +28,9 @@ export default function HomePage() {
             href="/consultar"
             className="inline-flex items-center space-x-2 text-xs sm:text-sm font-semibold text-[#1a2527] hover:text-[#d30684] transition-colors py-2"
           >
-            <Search className="w-4 h-4 text-[#d30684]" />
+            <GoogleIcon name="search" size={16} className="text-[#d30684]" />
             <span>¿Ya registraste un caso? Consulta tu ticket aquí</span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+            <GoogleIcon name="arrow_forward" size={14} className="text-slate-400" />
           </Link>
         </div>
       </main>
@@ -38,7 +38,7 @@ export default function HomePage() {
       {/* Footer Mínimo sin verdes ni emojis */}
       <footer className="bg-white border-t border-[#D3B9B9] py-6 px-4 text-center text-xs text-slate-600">
         <div className="flex items-center justify-center space-x-2 font-bold text-[#1a2527]">
-          <HeartHandshake className="w-4 h-4 text-[#d30684]" />
+          <GoogleIcon name="volunteer_activism" filled size={18} className="text-[#d30684]" />
           <span>Hilando Voces · Liderazgo Comunitario</span>
         </div>
         <p className="text-[11px] text-slate-500 mt-1">

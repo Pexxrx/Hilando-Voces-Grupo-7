@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
-import { hashDniInMemory, isValidDniFormat } from '@/lib/hasher';
+import { 
+  hashDniInMemory, 
+  isValidDniFormat, 
+  generateSecureTicketCode,
+  sanitizeText 
+} from '@/lib/hasher';
 import { isPointInSJL } from '@/lib/geofencing';
 import { analyzeReportWithGemini } from '@/lib/gemini';
 import { ReportAxis } from '@/types';
@@ -22,7 +27,7 @@ export async function POST(req: NextRequest) {
       ubigeo,
     } = body;
 
-    // 1. Ciberseguridad & Validación de DNI en memoria
+    // 1. Ciberseguridad & Validación de DNI en memoria (Ley N° 29733)
     if (!dni || !isValidDniFormat(dni)) {
       return NextResponse.json(
         { error: 'El DNI debe tener 8 dígitos numéricos válidos.' },
@@ -30,7 +35,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Validación de Ubigeo (6 dígitos)
+    // 2. Validación de Ubigeo (6 dígitos numéricos)
     if (!ubigeo || !/^\d{6}$/.test(ubigeo)) {
       return NextResponse.json(
         { error: 'El código de Ubigeo debe tener 6 dígitos numéricos.' },
@@ -38,68 +43,95 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Validación de Geofencing (SJL obligatorio)
-    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    // 3. Validación estricta de Coordenadas & Geofencing
+    if (typeof latitude !== 'number' || typeof longitude !== 'number' || isNaN(latitude) || isNaN(longitude)) {
       return NextResponse.json(
-        { error: 'Se requiere geolocalización GPS activa para registrar el reporte.' },
+        { error: 'Se requieren coordenadas de ubicación válidas para registrar el reporte.' },
         { status: 400 }
       );
     }
 
     if (!isPointInSJL(latitude, longitude)) {
       return NextResponse.json(
-        { error: 'La ubicación detectada no se encuentra dentro del territorio de San Juan de Lurigancho.' },
+        { error: 'La ubicación seleccionada se encuentra fuera del área activa de atención comunitaria.' },
         { status: 400 }
       );
     }
 
-    // 4. Validación de campos obligatorios
+    // 4. Validación de campos obligatorios y sanitización anti-XSS
     const validAxes: ReportAxis[] = ['alumbrado', 'microbasurales', 'espacios_recreativos'];
     if (!validAxes.includes(axis)) {
       return NextResponse.json(
-        { error: 'Debe seleccionar uno de los tres ejes válidos de acción comunitaria.' },
+        { error: 'Debe seleccionar una de las tres áreas válidas de atención comunitaria.' },
         { status: 400 }
       );
     }
 
-    if (!description || description.trim().length < 10) {
+    const cleanDescription = sanitizeText(description);
+    if (!cleanDescription || cleanDescription.length < 10) {
       return NextResponse.json(
         { error: 'Por favor describe la problemática con al menos 10 caracteres.' },
         { status: 400 }
       );
     }
+    if (cleanDescription.length > 1000) {
+      return NextResponse.json(
+        { error: 'La descripción excede el límite máximo de 1000 caracteres.' },
+        { status: 400 }
+      );
+    }
 
-    if (!reference || reference.trim().length < 5) {
+    const cleanReference = sanitizeText(reference);
+    if (!cleanReference || cleanReference.length < 5) {
       return NextResponse.json(
         { error: 'La referencia o dirección es obligatoria para ubicar el lugar (al menos 5 caracteres).' },
         { status: 400 }
       );
     }
+    if (cleanReference.length > 250) {
+      return NextResponse.json(
+        { error: 'La referencia excede el límite máximo de 250 caracteres.' },
+        { status: 400 }
+      );
+    }
+
+    // Validación de WhatsApp si el vecino desea coordinar voluntariamente
+    let cleanWhatsapp: string | null = null;
+    if (wants_to_coordinate) {
+      if (!coordinator_whatsapp || !/^\d{9}$/.test(coordinator_whatsapp.trim())) {
+        return NextResponse.json(
+          { error: 'Por favor ingresa un número telefónico válido de 9 dígitos.' },
+          { status: 400 }
+        );
+      }
+      cleanWhatsapp = coordinator_whatsapp.trim();
+    }
 
     // 5. Ciberseguridad: Token Anti-Spam en Memoria (NUNCA guardar DNI)
     const antiSpamHash = hashDniInMemory(dni);
 
-    // 6. Generar Código Único de Ticket (ej: #HV-SJL-048)
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const ticketCode = `#HV-SJL-${randomSuffix}`;
+    // 6. Generar Código Único Criptográficamente Seguro (#HV-SJL-YYYYY)
+    const ticketCode = generateSecureTicketCode();
 
-    // 7. Análisis de Copiloto IA (Gemini 3.8 Flash)
-    const aiAnalysis = await analyzeReportWithGemini(description.trim(), axis);
+    // 7. Análisis de Copiloto IA (Gemini 3.8 Flash con fallback heurístico)
+    const aiAnalysis = await analyzeReportWithGemini(cleanDescription, axis);
 
     // 8. Inserción segura en Supabase con cliente administrativo
+    const photoToSave = (Array.isArray(photos) && photos.length > 0 ? photos[0] : photo_before_url) || null;
+
     const { data, error } = await supabaseAdmin
       .from('reports')
       .insert({
         ticket_code: ticketCode,
         axis,
-        description: description.trim(),
-        photo_before_url: (Array.isArray(photos) && photos.length > 0 ? photos[0] : photo_before_url) || null,
+        description: cleanDescription,
+        photo_before_url: photoToSave,
         latitude,
         longitude,
         ubigeo: ubigeo || '150132',
-        reference: reference ? reference.trim() : null,
+        reference: cleanReference,
         wants_to_coordinate: !!wants_to_coordinate,
-        coordinator_whatsapp: wants_to_coordinate && coordinator_whatsapp ? coordinator_whatsapp.trim() : null,
+        coordinator_whatsapp: cleanWhatsapp,
         anti_spam_hash: antiSpamHash,
         status: 'recibido',
         priority_level: aiAnalysis.priority,
@@ -117,7 +149,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 9. Retorno seguro al cliente (sin ningún rastro del DNI)
+    // 9. Retorno seguro al cliente (Cero fugas de DNI o hash)
     return NextResponse.json({
       success: true,
       ticket_code: data.ticket_code,
@@ -134,6 +166,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Consulta pública de reportes territoriales
+ * CIBERSEGURIDAD: EXCLUYE coordinator_whatsapp y anti_spam_hash para evitar fugas de datos personales.
+ */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -142,7 +178,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabaseAdmin
       .from('reports')
-      .select('*')
+      .select('id, ticket_code, axis, description, latitude, longitude, status, priority_level, created_at, resolved_at, photo_before_url, photo_after_url, ubigeo')
       .order('created_at', { ascending: false });
 
     if (axis) query = query.eq('axis', axis);

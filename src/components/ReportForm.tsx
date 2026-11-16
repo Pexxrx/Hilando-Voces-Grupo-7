@@ -2,26 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
-import { 
-  Lightbulb, 
-  Trash2, 
-  TreePine, 
-  MapPin, 
-  Camera, 
-  ShieldCheck, 
-  AlertCircle, 
-  CheckCircle2, 
-  ArrowRight, 
-  Share2, 
-  Copy,
-  Users,
-  Navigation,
-  Check,
-  X,
-  Phone,
-  CreditCard,
-  Plus
-} from 'lucide-react';
+import { GoogleIcon } from './GoogleIcon';
 import { ReportAxis } from '@/types';
 import { isPointInSJL } from '@/lib/geofencing';
 import { LocationPickerMap } from './LocationPickerMap';
@@ -98,7 +79,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
           setProblemCoords({ lat, lng });
           setLocationVerificationError(null);
         } else {
-          // Si está fuera del polígono, la lógica de implementación exige que esté en el área activa
           setLocationVerificationError('Para registrar este reporte, es necesario que te encuentres dentro del área activa de atención comunitaria.');
         }
         setVerifyingLocation(false);
@@ -268,7 +248,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
         return;
       }
 
-      // Guardar ticket en LocalStorage del celular
+      // Guardar ticket en LocalStorage del dispositivo
       const stored = localStorage.getItem('hv_tickets');
       const ticketList = stored ? JSON.parse(stored) : [];
       ticketList.unshift({
@@ -340,7 +320,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
       <div className="p-4 sm:p-7">
         {submitError && (
           <div className="mb-5 p-4 rounded-2xl bg-[#F3E8E8] border-2 border-[#d30684]/50 text-[#8c472f] text-sm flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-[#d30684] shrink-0 mt-0.5" />
+            <GoogleIcon name="error" filled className="text-[#d30684] shrink-0 mt-0.5" size={20} />
             <div className="font-semibold leading-relaxed">{submitError}</div>
           </div>
         )}
@@ -398,7 +378,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   )}
                   {dni.length === 8 && (
                     <span className="text-[#16a34a] font-bold flex items-center justify-center space-x-1">
-                      <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
+                      <GoogleIcon name="check_circle" filled className="text-[#16a34a]" size={16} />
                       <span>DNI completado</span>
                     </span>
                   )}
@@ -416,7 +396,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                     onClick={() => setShowUbigeoGuide(true)}
                     className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white border-2 border-[#d30684] text-xs font-bold text-[#d30684] hover:bg-[#fdf2f8] active:scale-95 shadow-sm transition-all cursor-pointer self-start sm:self-auto"
                   >
-                    <CreditCard className="w-3.5 h-3.5 text-[#d30684] shrink-0" />
+                    <GoogleIcon name="badge" filled className="text-[#d30684] shrink-0" size={16} />
                     <span>¿Dónde encuentro el Ubigeo en mi DNI?</span>
                   </button>
                 </div>
@@ -447,7 +427,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   )}
                   {ubigeo.length === 6 && (
                     <span className="text-[#16a34a] font-bold flex items-center justify-center space-x-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a]" />
+                      <GoogleIcon name="check_circle" filled className="text-[#16a34a]" size={16} />
                       <span>Ubigeo completado</span>
                     </span>
                   )}
@@ -499,7 +479,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               className="w-full py-4 px-6 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-base shadow-lg shadow-[#d30684]/25 flex items-center justify-center space-x-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <span>Continuar al Paso 2</span>
-              <ArrowRight className="w-5 h-5 text-white" />
+              <GoogleIcon name="arrow_forward" size={20} className="text-white" />
             </button>
           </div>
         )}
@@ -533,14 +513,14 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 }`}
               >
                 <div className="w-13 h-13 rounded-2xl bg-[#FFFBEB] text-[#E4981E] flex items-center justify-center shrink-0 border border-[#FDE68A] shadow-sm">
-                  <Lightbulb className="w-7 h-7 text-[#E4981E]" />
+                  <GoogleIcon name="lightbulb" size={28} className="text-[#E4981E]" filled />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-[#1a2527] text-base sm:text-lg">
                       1. Alumbrado y vías oscuras
                     </h3>
-                    {axis === 'alumbrado' && <Check className="w-5 h-5 text-[#d30684] stroke-[3]" />}
+                    {axis === 'alumbrado' && <GoogleIcon name="check" size={20} className="text-[#d30684]" />}
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-snug">
                     Postes sin luz, focos quemados o pasajes oscuros donde se requiere iluminación comunitaria.
@@ -559,14 +539,14 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 }`}
               >
                 <div className="w-13 h-13 rounded-2xl bg-[#FFF1F2] text-[#E28A85] flex items-center justify-center shrink-0 border border-[#FECDD3] shadow-sm">
-                  <Trash2 className="w-7 h-7 text-[#E28A85]" />
+                  <GoogleIcon name="delete" size={28} className="text-[#E28A85]" filled />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-[#1a2527] text-base sm:text-lg">
                       2. Limpieza de basura
                     </h3>
-                    {axis === 'microbasurales' && <Check className="w-5 h-5 text-[#d30684] stroke-[3]" />}
+                    {axis === 'microbasurales' && <GoogleIcon name="check" size={20} className="text-[#d30684]" />}
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-snug">
                     Puntos con basura acumulada o residuos que los vecinos y brigadas comunitarias pueden recoger y limpiar en una jornada barrial.
@@ -585,14 +565,14 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 }`}
               >
                 <div className="w-13 h-13 rounded-2xl bg-[#F0FDF4] text-[#588157] flex items-center justify-center shrink-0 border border-[#BBF7D0] shadow-sm">
-                  <TreePine className="w-7 h-7 text-[#588157]" />
+                  <GoogleIcon name="park" size={28} className="text-[#588157]" filled />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-[#1a2527] text-base sm:text-lg">
                       3. Recuperación de espacios abandonados
                     </h3>
-                    {axis === 'espacios_recreativos' && <Check className="w-5 h-5 text-[#d30684] stroke-[3]" />}
+                    {axis === 'espacios_recreativos' && <GoogleIcon name="check" size={20} className="text-[#d30684]" />}
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-snug">
                     Parques descuidados, losas comunales o rincones abandonados para limpiarlos, pintarlos y recuperarlos para la comunidad.
@@ -616,7 +596,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 className="w-2/3 py-4 px-6 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-sm sm:text-base flex items-center justify-center space-x-2 transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-[#d30684]/20"
               >
                 <span>Continuar al Paso 3</span>
-                <ArrowRight className="w-5 h-5 text-white" />
+                <GoogleIcon name="arrow_forward" size={20} className="text-white" />
               </button>
             </div>
           </div>
@@ -624,7 +604,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
 
         {/* ============================================================
             PASO 3: Ubicación, Mapa Interactivo, Referencia y Fotos
-            (Sin carteles robóticos ni botones saltados)
             ============================================================ */}
         {step === 3 && (
           <div className="space-y-6">
@@ -643,16 +622,16 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             {/* Aviso amigable y humano si falta algún campo */}
             {step3Notice && (
               <div className="p-3.5 rounded-2xl bg-[#FFFBEB] border-2 border-[#FDE68A] text-[#92400e] text-xs sm:text-sm flex items-center space-x-2.5">
-                <AlertCircle className="w-4 h-4 text-[#E4981E] shrink-0" />
+                <GoogleIcon name="warning" filled className="text-[#E4981E] shrink-0" size={18} />
                 <span className="font-semibold">{step3Notice}</span>
               </div>
             )}
 
-            {/* SECCIÓN 1: Permiso de Ubicación (Botón Compartir Ubicación, sin 'en SJL' y sin confirmaciones manuales) */}
+            {/* SECCIÓN 1: Permiso de Ubicación */}
             <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border-2 border-[#D3B9B9] space-y-3">
               <div className="space-y-1">
                 <span className="text-xs sm:text-sm font-bold text-[#1a2527] flex items-center space-x-1.5">
-                  <Navigation className="w-4 h-4 text-[#d30684]" />
+                  <GoogleIcon name="near_me" filled className="text-[#d30684]" size={18} />
                   <span>Ubicación para el reporte:</span>
                 </span>
                 <p className="text-xs text-slate-600 leading-relaxed">
@@ -663,7 +642,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               {userLocationVerified ? (
                 <div className="bg-white p-3.5 rounded-xl border border-[#16a34a]/40 flex items-center justify-between shadow-sm">
                   <div className="flex items-center space-x-2 text-xs sm:text-sm font-bold text-[#16a34a]">
-                    <CheckCircle2 className="w-5 h-5 text-[#16a34a] shrink-0" />
+                    <GoogleIcon name="check_circle" filled className="text-[#16a34a] shrink-0" size={20} />
                     <span>Ubicación confirmada</span>
                   </div>
                   <button
@@ -683,7 +662,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                     disabled={verifyingLocation}
                     className="w-full py-3.5 px-4 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-md shadow-[#d30684]/20"
                   >
-                    <MapPin className="w-4 h-4 text-white" />
+                    <GoogleIcon name="location_on" filled className="text-white" size={18} />
                     <span>
                       {verifyingLocation
                         ? 'Obteniendo ubicación...'
@@ -723,7 +702,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               />
             </div>
 
-            {/* SECCIÓN 3: Referencia Humana (Sin carteles de 'Obligatorio' ni 'Mínimo 5 caracteres') */}
+            {/* SECCIÓN 3: Referencia Humana */}
             <div>
               <label className="block text-sm font-bold text-[#1a2527] mb-1">
                 Dirección o referencia del lugar:
@@ -743,7 +722,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               </p>
             </div>
 
-            {/* SECCIÓN 4: Detalle Breve (Sin carteles de '0/10' ni 'Detalle adecuado') */}
+            {/* SECCIÓN 4: Detalle Breve */}
             <div>
               <label className="block text-sm font-bold text-[#1a2527] mb-1">
                 ¿Qué ocurre en este lugar?
@@ -763,7 +742,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               </p>
             </div>
 
-            {/* SECCIÓN 5: Fotografías del Lugar (Sin carteles técnicos ni avisos de error) */}
+            {/* SECCIÓN 5: Fotografías del Lugar */}
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-bold text-[#1a2527]">
@@ -793,7 +772,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                         className="absolute top-2 right-2 p-1.5 rounded-xl bg-white/95 text-[#8c472f] hover:bg-[#F3E8E8] shadow-md transition-all cursor-pointer"
                         title="Borrar foto"
                       >
-                        <Trash2 className="w-4 h-4 text-[#d30684]" />
+                        <GoogleIcon name="delete" size={18} className="text-[#d30684]" />
                       </button>
                     </div>
                   ))}
@@ -806,12 +785,12 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   <label className="w-full flex items-center justify-center space-x-2 px-5 py-3.5 rounded-2xl bg-[#FAF8F5] hover:bg-[#fdf2f8] border-2 border-dashed border-[#D3B9B9] hover:border-[#d30684] text-xs sm:text-sm font-bold text-[#d30684] cursor-pointer transition-all shadow-sm">
                     {photos.length === 0 ? (
                       <>
-                        <Camera className="w-5 h-5 text-[#d30684]" />
+                        <GoogleIcon name="photo_camera" filled className="text-[#d30684]" size={20} />
                         <span>Tomar o subir foto</span>
                       </>
                     ) : (
                       <>
-                        <Plus className="w-5 h-5 text-[#d30684]" />
+                        <GoogleIcon name="add" className="text-[#d30684]" size={20} />
                         <span>Subir otra foto</span>
                       </>
                     )}
@@ -844,7 +823,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 className="w-2/3 py-4 px-6 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-sm sm:text-base flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-md shadow-[#d30684]/20"
               >
                 <span>Continuar al Paso 4</span>
-                <ArrowRight className="w-5 h-5 text-white" />
+                <GoogleIcon name="arrow_forward" size={20} className="text-white" />
               </button>
             </div>
           </div>
@@ -870,7 +849,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             <div className="p-5 rounded-2xl bg-[#fdf2f8] border-2 border-[#d30684]/30 space-y-4">
               <div className="flex items-start space-x-3.5">
                 <div className="w-12 h-12 rounded-2xl bg-[#d30684] text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Users className="w-6 h-6 text-white" />
+                  <GoogleIcon name="groups" filled size={24} className="text-white" />
                 </div>
                 <div>
                   <h3 className="font-bold text-[#1a2527] text-base">
@@ -914,7 +893,9 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                           : 'border-[#D3B9B9] focus:ring-2 focus:ring-[#d30684]'
                       }`}
                     />
-                    <Phone className="w-5 h-5 text-[#d30684] absolute left-3.5 top-3.5" />
+                    <div className="absolute left-3.5 top-3.5">
+                      <GoogleIcon name="call" filled size={20} className="text-[#d30684]" />
+                    </div>
                   </div>
                   <div className="mt-1 text-xs">
                     {whatsapp.length === 0 && (
@@ -925,7 +906,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                     )}
                     {whatsapp.length === 9 && (
                       <span className="text-[#16a34a] font-bold flex items-center space-x-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a]" />
+                        <GoogleIcon name="check_circle" filled size={16} className="text-[#16a34a]" />
                         <span>Número de WhatsApp completado</span>
                       </span>
                     )}
@@ -947,7 +928,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 disabled={submitting}
                 className="w-2/3 py-4 px-6 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-sm sm:text-base shadow-lg shadow-[#d30684]/25 flex items-center justify-center space-x-2 transition-all disabled:opacity-40 cursor-pointer"
               >
-                <CheckCircle2 className="w-5 h-5 text-white" />
+                <GoogleIcon name="check_circle" filled size={20} className="text-white" />
                 <span>{submitting ? 'Enviando reporte...' : 'Finalizar y Enviar Reporte'}</span>
               </button>
             </div>
@@ -955,12 +936,12 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
         )}
 
         {/* ============================================================
-            PASO 5: Confirmación de Ticket
+            PASO 5: Confirmación de Ticket con Formato Seguro #HV-SJL-YYYYY
             ============================================================ */}
         {step === 5 && ticketResult && (
           <div className="text-center py-4 space-y-6">
             <div className="w-16 h-16 bg-[#f0fdf4] text-[#16a34a] rounded-full flex items-center justify-center mx-auto shadow-md border-2 border-[#16a34a]/30">
-              <CheckCircle2 className="w-10 h-10 text-[#16a34a]" />
+              <GoogleIcon name="check_circle" filled size={40} className="text-[#16a34a]" />
             </div>
 
             <div>
@@ -977,7 +958,11 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   className="p-2 hover:bg-[#fdf2f8] rounded-xl transition-colors text-slate-500 hover:text-[#d30684] cursor-pointer"
                   title="Copiar código"
                 >
-                  {copied ? <Check className="w-5 h-5 text-[#d30684]" /> : <Copy className="w-5 h-5" />}
+                  {copied ? (
+                    <GoogleIcon name="check" size={20} className="text-[#d30684]" />
+                  ) : (
+                    <GoogleIcon name="content_copy" size={20} />
+                  )}
                 </button>
               </div>
             </div>
@@ -992,7 +977,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 onClick={shareViaWhatsapp}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white text-sm font-bold flex items-center justify-center space-x-2 shadow-md shadow-[#d30684]/20 cursor-pointer"
               >
-                <Share2 className="w-4 h-4 text-white" />
+                <GoogleIcon name="share" filled size={18} className="text-white" />
                 <span>Compartir en WhatsApp</span>
               </button>
 
@@ -1001,7 +986,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#FAF8F5] hover:bg-[#fdf2f8] border-2 border-[#D3B9B9] text-[#1a2527] text-sm font-bold flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <span>Ver estado del caso</span>
-                <ArrowRight className="w-4 h-4 text-[#d30684]" />
+                <GoogleIcon name="arrow_forward" size={18} className="text-[#d30684]" />
               </Link>
             </div>
           </div>
@@ -1016,7 +1001,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
           <div className="bg-white w-full max-w-lg rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-[#D3B9B9] space-y-4 my-auto">
             <div className="flex items-center justify-between border-b border-[#D3B9B9] pb-3">
               <div className="flex items-center space-x-2">
-                <CreditCard className="w-5 h-5 text-[#d30684]" />
+                <GoogleIcon name="badge" filled size={20} className="text-[#d30684]" />
                 <h3 className="font-heading font-bold text-lg text-[#1a2527]">
                   Encuentra el Ubigeo en tu DNI
                 </h3>
@@ -1026,11 +1011,11 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 onClick={() => setShowUbigeoGuide(false)}
                 className="text-slate-400 hover:text-[#1a2527] p-1 cursor-pointer"
               >
-                <X className="w-6 h-6" />
+                <GoogleIcon name="close" size={24} />
               </button>
             </div>
 
-            {/* Selector de 3 pestañas solicitadas estrictamente */}
+            {/* Selector de 3 pestañas */}
             <div className="flex rounded-xl bg-[#FAF8F5] p-1 border border-[#D3B9B9] text-xs font-bold">
               <button
                 type="button"
@@ -1142,7 +1127,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
           <div className="bg-white w-full max-w-lg rounded-3xl p-5 sm:p-7 shadow-2xl border-2 border-[#D3B9B9] space-y-4 my-auto">
             <div className="flex items-center justify-between border-b border-[#D3B9B9] pb-3">
               <div className="flex items-center space-x-2">
-                <ShieldCheck className="w-5 h-5 text-[#d30684]" />
+                <GoogleIcon name="verified_user" filled size={20} className="text-[#d30684]" />
                 <h3 className="font-heading font-bold text-lg text-[#1a2527]">
                   ¿Cómo protegemos tu tranquilidad y anonimato?
                 </h3>
@@ -1152,7 +1137,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 onClick={() => setShowPrivacyPolicy(false)}
                 className="text-slate-400 hover:text-[#1a2527] p-1 cursor-pointer"
               >
-                <X className="w-6 h-6" />
+                <GoogleIcon name="close" size={24} />
               </button>
             </div>
 
@@ -1167,7 +1152,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   <span>Tu nombre e identidad jamás serán publicados</span>
                 </h4>
                 <p className="text-slate-600 pl-7 text-xs sm:text-sm leading-relaxed">
-                  El reporte es 100% anónimo. No te pediremos tu nombre, ni tus apellidos, ni la dirección de tu casa, ni fotos personales. Tu caso solo tendrá un número de ticket comunitario (por ejemplo: <code>#HV-SJL-048</code>) para que puedas seguir el avance sin exponerte ante nadie.
+                  El reporte es 100% anónimo. No te pediremos tu nombre, ni tus apellidos, ni la dirección de tu casa, ni fotos personales. Tu caso solo tendrá un número de ticket comunitario aleatorio (por ejemplo: <code>#HV-SJL-K7M9X</code>) para que puedas seguir el avance sin exponerte ante nadie.
                 </p>
               </div>
 
@@ -1220,7 +1205,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               }}
               className="w-full py-3.5 px-4 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-sm shadow-md cursor-pointer transition-colors flex items-center justify-center space-x-2"
             >
-              <CheckCircle2 className="w-4 h-4 text-white" />
+              <GoogleIcon name="check_circle" filled size={18} className="text-white" />
               <span>Entendido, continuar con mi reporte</span>
             </button>
           </div>

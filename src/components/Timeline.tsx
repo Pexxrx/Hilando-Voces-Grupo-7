@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Clock, Calendar, Check, Image as ImageIcon } from 'lucide-react';
+import { GoogleIcon } from '@/components/GoogleIcon';
 import { ReportStatus } from '@/types';
 
 interface TimelineProps {
@@ -57,7 +57,7 @@ export function Timeline({
                     : 'bg-white border-2 border-[#D3B9B9] text-slate-400'
                 } ${isCurrent ? 'ring-4 ring-[#d30684]/30 scale-110' : ''}`}
               >
-                {isDone ? <Check className="w-4 h-4 stroke-[3]" /> : idx + 1}
+                {isDone ? <GoogleIcon name="check" size={16} className="text-white" /> : idx + 1}
               </div>
               <span
                 className={`text-[11px] sm:text-xs font-semibold mt-2.5 text-center whitespace-nowrap ${
@@ -74,12 +74,12 @@ export function Timeline({
       {/* Tarjeta de estado actual */}
       <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]/70 text-xs text-[#1a2527] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
         <div className="flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-[#d30684]" />
+          <GoogleIcon name="schedule" size={18} className="text-[#d30684]" />
           <span>Fecha de reporte: <strong>{new Date(createdAt).toLocaleDateString()}</strong></span>
         </div>
         {resolvedAt && (
           <div className="flex items-center space-x-1.5 text-[#16a34a] font-bold bg-[#f0fdf4] px-3 py-1 rounded-full border border-[#16a34a]/30">
-            <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
+            <GoogleIcon name="check_circle" filled size={16} className="text-[#16a34a]" />
             <span>Faena Concluida el: {new Date(resolvedAt).toLocaleDateString()}</span>
           </div>
         )}
@@ -96,7 +96,7 @@ export function Timeline({
               <div className="rounded-2xl border border-[#D3B9B9] overflow-hidden bg-white shadow-sm">
                 <div className="bg-[#FAF8F5] px-3.5 py-2 border-b border-[#D3B9B9] text-[11px] font-bold text-[#d30684] flex items-center justify-between">
                   <span>Foto Inicial ("Antes")</span>
-                  <ImageIcon className="w-3.5 h-3.5" />
+                  <GoogleIcon name="image" size={16} className="text-[#d30684]" />
                 </div>
                 <div className="h-48 w-full bg-[#FAF8F5]">
                   <img src={photoBeforeUrl} alt="Antes" className="w-full h-full object-cover" />
@@ -108,7 +108,7 @@ export function Timeline({
               <div className="rounded-2xl border border-[#d30684]/40 overflow-hidden bg-white shadow-sm">
                 <div className="bg-[#fdf2f8] px-3.5 py-2 border-b border-[#d30684]/30 text-[11px] font-bold text-[#d30684] flex items-center justify-between">
                   <span>Espacio Recuperado ("Después")</span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#d30684]" />
+                  <GoogleIcon name="check_circle" filled size={16} className="text-[#d30684]" />
                 </div>
                 <div className="h-48 w-full bg-[#FAF8F5]">
                   <img src={photoAfterUrl} alt="Después" className="w-full h-full object-cover" />
@@ -116,7 +116,7 @@ export function Timeline({
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-[#D3B9B9] p-6 flex flex-col items-center justify-center text-center bg-[#FAF8F5]">
-                <Calendar className="w-8 h-8 text-[#D3B9B9] mb-2" />
+                <GoogleIcon name="calendar_today" size={32} className="text-[#D3B9B9] mb-2" />
                 <span className="text-xs font-bold text-[#1a2527]">Fotografía "Después" en curso</span>
                 <span className="text-[11px] text-slate-500 mt-1 max-w-xs leading-relaxed">
                   Las lideresas juveniles subirán la fotografía al culminar la faena comunitaria.
