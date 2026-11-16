@@ -35,6 +35,12 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
       icon: 'calendar_month',
     },
     {
+      id: 'ahp',
+      label: 'Priorización AHP',
+      description: 'Modelo multicriterio Saaty',
+      icon: 'tune',
+    },
+    {
       id: 'voluntarios',
       label: 'Red de Voluntarios',
       description: 'Coordinación por WhatsApp',

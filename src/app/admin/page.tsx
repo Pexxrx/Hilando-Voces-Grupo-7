@@ -10,6 +10,7 @@ import { FaenasPlanner } from '@/components/admin/FaenasPlanner';
 import { VolunteersDirectory } from '@/components/admin/VolunteersDirectory';
 import { AccountabilityGallery } from '@/components/admin/AccountabilityGallery';
 import { TeamRolesManager } from '@/components/admin/TeamRolesManager';
+import { AHPPrioritizerView } from '@/components/admin/AHPPrioritizerView';
 import { WarmichaChatbot } from '@/components/admin/WarmichaChatbot';
 import { FaenaSheetModal } from '@/components/FaenaSheetModal';
 import { GoogleIcon } from '@/components/GoogleIcon';
@@ -247,6 +248,18 @@ export default function AdminDashboardPage() {
                 setSelectedReport(report);
                 setActiveTab('incidencias');
               }}
+            />
+          )}
+
+          {activeTab === 'ahp' && (
+            <AHPPrioritizerView
+              reports={reports}
+              onSelectReport={(report) => {
+                setSelectedReport(report);
+                setActiveTab('incidencias');
+              }}
+              onNavigateToTab={(tab) => setActiveTab(tab)}
+              onScheduleFaena={(report) => setActiveFaenaReport(report)}
             />
           )}
 

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { Report, ReportAxis, ReportStatus } from '@/types';
 import { ExtendedReport } from '@/data/mockReports';
+import { evaluateIncidentAHP } from '@/lib/ahp';
 
 interface IncidentsManagerProps {
   reports: Report[];
@@ -329,11 +330,16 @@ export function IncidentsManager({
                       {report.description}
                     </p>
 
-                    {/* Fila 4: Código de Ticket y Estado */}
+                    {/* Fila 4: Código de Ticket, Score AHP y Estado */}
                     <div className="flex items-center justify-between pt-1">
-                      <span className="font-mono text-[10px] font-black text-[#d30684]">
-                        {report.ticket_code}
-                      </span>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="font-mono text-[10px] font-black text-[#d30684]">
+                          {report.ticket_code}
+                        </span>
+                        <span className="font-mono text-[9px] font-bold text-slate-400 bg-slate-50 px-1 py-0.2 rounded border border-slate-200">
+                          AHP: {evaluateIncidentAHP(report.description, report.axis, report.reference).ahp_score.toFixed(3)}
+                        </span>
+                      </div>
                       {getStatusBadge(report.status)}
                     </div>
                   </div>
@@ -445,37 +451,99 @@ export function IncidentsManager({
                 </div>
               </div>
 
-              {/* CARD: SÍNTESIS Y TRIAJE DEL COPILOTO GEMINI 3.8 FLASH */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-[#fdf2f8] to-white border border-[#d30684]/30 space-y-2.5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2 h-2 rounded-full bg-[#d30684] animate-pulse" />
-                    <span className="font-heading font-black text-xs uppercase tracking-wider text-[#d30684] flex items-center space-x-1">
-                      <GoogleIcon name="smart_toy" size={16} />
-                      <span>Síntesis y Triaje del Copiloto Gemini</span>
-                    </span>
+              {/* CARD: SÍNTESIS Y TRIAJE DEL COPILOTO GEMINI + EVALUACIÓN AHP */}
+              {(() => {
+                const ahpData = evaluateIncidentAHP(
+                  selectedReport.description,
+                  selectedReport.axis,
+                  selectedReport.reference
+                );
+                return (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-[#fdf2f8] to-white border border-[#d30684]/30 space-y-3 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2 h-2 rounded-full bg-[#d30684] animate-pulse" />
+                        <span className="font-heading font-black text-xs uppercase tracking-wider text-[#d30684] flex items-center space-x-1">
+                          <GoogleIcon name="smart_toy" size={16} />
+                          <span>Síntesis y Triaje del Copiloto Gemini</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-white border border-[#d30684]/40 text-[#d30684]">
+                          AHP: {ahpData.ahp_score.toFixed(4)}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            ahpData.priority === 'alta'
+                              ? 'bg-red-600 text-white'
+                              : ahpData.priority === 'media'
+                              ? 'bg-amber-500 text-white'
+                              : 'bg-emerald-600 text-white'
+                          }`}
+                        >
+                          {ahpData.priority.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs font-bold text-slate-800 leading-relaxed">
+                      {selectedReport.ai_summary || 'Resumen no disponible para este reporte.'}
+                    </p>
+
+                    {/* Desglose de Criterios AHP de Saaty */}
+                    <div className="p-2.5 rounded-xl bg-white/80 border border-[#D3B9B9]/50 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase">
+                        <span>Ponderación Multicriterio AHP (Grupo 7):</span>
+                        <span className="text-[#d30684]">CR = 0.0221 (Consistente)</span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-1.5 text-center text-[10px]">
+                        <div className="bg-[#FAF8F5] p-1 rounded">
+                          <span className="text-slate-400 block text-[9px]">Seg (48.5%)</span>
+                          <span className="font-bold text-slate-800">
+                            {(ahpData.criteria_ratings.seguridad * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="bg-[#FAF8F5] p-1 rounded">
+                          <span className="text-slate-400 block text-[9px]">Sal (22.7%)</span>
+                          <span className="font-bold text-slate-800">
+                            {(ahpData.criteria_ratings.salud * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="bg-[#FAF8F5] p-1 rounded">
+                          <span className="text-slate-400 block text-[9px]">Equ (14.3%)</span>
+                          <span className="font-bold text-slate-800">
+                            {(ahpData.criteria_ratings.equidad * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="bg-[#FAF8F5] p-1 rounded">
+                          <span className="text-slate-400 block text-[9px]">Alc (8.9%)</span>
+                          <span className="font-bold text-slate-800">
+                            {(ahpData.criteria_ratings.alcance * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="bg-[#FAF8F5] p-1 rounded">
+                          <span className="text-slate-400 block text-[9px]">Con (5.7%)</span>
+                          <span className="font-bold text-slate-800">
+                            {(ahpData.criteria_ratings.convivencia * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Etiquetas Temáticas */}
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {(selectedReport.ai_tags || ['SJL', 'Comunitario']).map((tag, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded-lg bg-white border border-[#D3B9B9] text-[10px] font-semibold text-slate-600"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#d30684] text-white">
-                    Prioridad: {selectedReport.priority_level.toUpperCase()}
-                  </span>
-                </div>
-
-                <p className="text-xs font-bold text-slate-800 leading-relaxed">
-                  {selectedReport.ai_summary || 'Resumen no disponible para este reporte.'}
-                </p>
-
-                {/* Etiquetas Temáticas */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {(selectedReport.ai_tags || ['SJL', 'Comunitario']).map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-0.5 rounded-lg bg-white border border-[#D3B9B9] text-[10px] font-semibold text-slate-600"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
+                );
+              })()}
 
               {/* CARD: VOZ DEL VECINO (TESTIMONIO CIUDADANO COMPLETO) */}
               <div className="space-y-2">
