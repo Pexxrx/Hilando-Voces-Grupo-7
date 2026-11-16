@@ -39,27 +39,32 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
     try {
       const res = await fetch('/api/admin/reports', {
         headers: {
           'x-admin-email': profile.email,
           'x-admin-role': profile.role,
         },
+        signal: controller.signal,
       });
-      const data = await res.json();
-      if (data.reports) {
-        setReports(data.reports);
-        if (data.reports.length > 0 && !selectedReport) {
-          setSelectedReport(data.reports[0]);
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.reports)) {
+          setReports(data.reports);
+          setSelectedReport((prev) => prev || (data.reports.length > 0 ? data.reports[0] : null));
         }
       }
     } catch (err) {
-      console.error('Error fetching admin reports:', err);
+      console.warn('Advertencia o timeout al obtener reportes admin:', err);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
       setRefreshing(false);
     }
-  }, [profile, selectedReport]);
+  }, [profile]);
 
   useEffect(() => {
     if (profile) {

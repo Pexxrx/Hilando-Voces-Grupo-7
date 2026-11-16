@@ -113,18 +113,8 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (dataLoading) {
-    return (
-      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center text-[#d30684] p-4">
-        <div className="text-center space-y-3">
-          <div className="w-12 h-12 border-4 border-[#d30684] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-semibold text-[#1a2527]">
-            Cargando plataforma territorial de San Juan de Lurigancho...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Nota: dataLoading se maneja de forma no bloqueante para que el Centro de Mando y el Mapa
+  // se rendericen inmediatamente en el primer instante sin congelar la pantalla.
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] flex flex-col text-[#1a2527] relative">

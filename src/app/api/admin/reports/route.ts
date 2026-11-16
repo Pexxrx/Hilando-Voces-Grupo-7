@@ -15,8 +15,8 @@ import { validateAdminAuth, sanitizeReportData } from '@/lib/authGuard';
  */
 export async function GET(req: NextRequest) {
   try {
-    // 1. Control de Acceso y Autenticación RBAC
-    const auth = await validateAdminAuth(req, ['lideresa', 'coordinadora', 'superadmin']);
+    // 1. Control de Acceso y Autenticación RBAC (Incluye los 3 perfiles oficiales)
+    const auth = await validateAdminAuth(req, ['lideresa', 'coordinadora', 'supervisora', 'superadmin']);
     if (!auth.authenticated) {
       return NextResponse.json(
         { error: auth.error || 'Acceso no autorizado al Centro de Mando.' },
@@ -38,12 +38,17 @@ export async function GET(req: NextRequest) {
       if (axis && axis !== 'todos') query = query.eq('axis', axis);
       if (status && status !== 'todos') query = query.eq('status', status);
 
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        dbReports = data;
+      // Respaldo de tiempo de espera: máximo 2.5s para no bloquear la experiencia de usuario
+      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase query timeout')), 2500)
+      );
+
+      const result: any = await Promise.race([query, timeoutPromise]);
+      if (result && !result.error && Array.isArray(result.data) && result.data.length > 0) {
+        dbReports = result.data;
       }
     } catch (dbErr) {
-      console.warn('Supabase no disponible o vacío, sirviendo dataset oficial MOCK_REPORTS_25:', dbErr);
+      console.warn('Consulta a Supabase omitida por timeout o no disponibilidad:', dbErr);
     }
 
     // Dataset oficial: Únicamente reportes reales registrados

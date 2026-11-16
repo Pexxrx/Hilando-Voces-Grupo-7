@@ -156,6 +156,7 @@ export function TeamRolesManager() {
       lideresa: 'Lideresa Territorial SJL',
       coordinadora: 'Coordinadora de Faena Barrial',
       superadmin: 'Supervisora Comunal Distrital',
+      supervisora: 'Supervisora Comunal Distrital',
     };
 
     const entry: LeaderEntry = {

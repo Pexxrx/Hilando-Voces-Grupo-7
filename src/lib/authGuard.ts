@@ -39,7 +39,7 @@ export async function validateAdminAuth(
           
           // Consultar rol asignado en Supabase o perfil oficial
           let role: AdminRole = 'lideresa';
-          if (adminRole && ['lideresa', 'coordinadora', 'superadmin'].includes(adminRole)) {
+          if (adminRole && ['lideresa', 'coordinadora', 'supervisora', 'superadmin'].includes(adminRole)) {
             role = adminRole;
           }
 
@@ -76,7 +76,7 @@ export async function validateAdminAuth(
     adminEmail.includes('coordinadora') ||
     adminEmail.includes('supervisora');
 
-  const isValidRole = ['lideresa', 'coordinadora', 'superadmin'].includes(adminRole);
+  const isValidRole = ['lideresa', 'coordinadora', 'supervisora', 'superadmin'].includes(adminRole);
 
   if (!isValidEmail || !isValidRole) {
     return {

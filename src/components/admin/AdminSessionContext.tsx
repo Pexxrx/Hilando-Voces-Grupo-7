@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-export type AdminRole = 'superadmin' | 'lideresa' | 'coordinadora';
+export type AdminRole = 'superadmin' | 'lideresa' | 'coordinadora' | 'supervisora';
 
 export interface AdminProfile {
   email: string;
@@ -32,10 +32,18 @@ export const OFFICIAL_ADMIN_PROFILES: Record<AdminRole, AdminProfile> = {
     sector: 'Comuna 8 · Bayóvar',
     avatarInitials: 'VM',
   },
+  supervisora: {
+    email: 'supervisora.distrital@hilandovoces.pe',
+    name: 'Ing. Carmen Ramos Alarcón',
+    role: 'supervisora',
+    roleTitle: 'Supervisora Comunal Distrital',
+    sector: 'Sede Central · San Juan de Lurigancho',
+    avatarInitials: 'CR',
+  },
   superadmin: {
     email: 'supervisora.distrital@hilandovoces.pe',
     name: 'Ing. Carmen Ramos Alarcón',
-    role: 'superadmin',
+    role: 'supervisora',
     roleTitle: 'Supervisora Comunal Distrital',
     sector: 'Sede Central · San Juan de Lurigancho',
     avatarInitials: 'CR',
