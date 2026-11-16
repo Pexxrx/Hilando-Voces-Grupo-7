@@ -63,17 +63,17 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('resumen');
 
+  // Comprueba la sesión sin provocar re-renders infinitos
   const checkSession = useCallback(() => {
+    if (typeof window === 'undefined') return false;
     const cached = localStorage.getItem('hv_admin_profile');
     if (!cached) {
-      if (profile !== null) setProfile(null);
+      setProfile((prev) => (prev !== null ? null : prev));
       return false;
     }
     try {
       const parsed = JSON.parse(cached) as AdminProfile;
-      if (!profile || profile.email !== parsed.email) {
-        setProfile(parsed);
-      }
+      setProfile((prev) => (prev?.email === parsed.email ? prev : parsed));
       return true;
     } catch (e) {
       localStorage.removeItem('hv_admin_profile');
@@ -81,11 +81,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       return false;
     }
-  }, [profile]);
+  }, []);
 
   const login = useCallback((newProfile: AdminProfile) => {
-    localStorage.setItem('hv_admin_profile', JSON.stringify(newProfile));
-    sessionStorage.setItem('hv_last_activity', Date.now().toString());
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hv_admin_profile', JSON.stringify(newProfile));
+      sessionStorage.setItem('hv_last_activity', Date.now().toString());
+    }
     setProfile(newProfile);
     setLoading(false);
   }, []);
@@ -95,8 +97,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       try {
         await supabase.auth.signOut();
       } catch (e) {}
-      localStorage.removeItem('hv_admin_profile');
-      sessionStorage.clear();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('hv_admin_profile');
+        sessionStorage.clear();
+      }
       setProfile(null);
       const target = reason === 'inactivity' ? '/admin/login?reason=inactivity' : '/admin/login';
       router.replace(target);
@@ -105,73 +109,53 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    const initSession = async () => {
-      // 1. Verificar si hay sesión activa en localStorage
-      const cached = localStorage.getItem('hv_admin_profile');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached) as AdminProfile;
-          setProfile(parsed);
-          setLoading(false);
-          return;
-        } catch (e) {
-          localStorage.removeItem('hv_admin_profile');
+    const init = async () => {
+      // 1. Verificar si hay perfil en localStorage
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('hv_admin_profile');
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached) as AdminProfile;
+            setProfile(parsed);
+            setLoading(false);
+            return;
+          } catch (e) {
+            localStorage.removeItem('hv_admin_profile');
+          }
         }
+
+        // 2. Si no hay en localStorage, verificar Supabase Auth
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData.session?.user?.email) {
+            const email = sessionData.session.user.email;
+            let role: AdminRole = 'lideresa';
+            if (email.includes('coordinadora')) role = 'coordinadora';
+            else if (email.includes('supervisora') || email.includes('superadmin')) role = 'superadmin';
+
+            const userProfile = OFFICIAL_ADMIN_PROFILES[role];
+            setProfile(userProfile);
+            localStorage.setItem('hv_admin_profile', JSON.stringify(userProfile));
+            setLoading(false);
+            return;
+          }
+        } catch (err) {}
       }
 
-      // 2. Verificar sesión de Supabase Auth
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session) {
-          const email = sessionData.session.user.email || '';
-          
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('email', email)
-            .maybeSingle();
-
-          const role = (roleData?.role as AdminRole) || 'lideresa';
-          const userProfile = OFFICIAL_ADMIN_PROFILES[role] || {
-            email,
-            name: email.split('@')[0],
-            role,
-            roleTitle: 'Lideresa Barrial',
-            sector: 'San Juan de Lurigancho',
-            avatarInitials: email.slice(0, 2).toUpperCase(),
-          };
-
-          setProfile(userProfile);
-          localStorage.setItem('hv_admin_profile', JSON.stringify(userProfile));
-          setLoading(false);
-          return;
-        }
-      } catch (err) {}
-
-      // Si no hay sesión previa, mantener perfil como null (acceso NO autenticado)
       setProfile(null);
       setLoading(false);
     };
 
-    initSession();
+    init();
 
     // Detección cuando se restaura desde la caché de navegación Atrás / Adelante (bfcache)
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        // La página fue restaurada desde el historial (botón Atrás o Adelante fuera del sitio)
-        localStorage.removeItem('hv_admin_profile');
-        sessionStorage.clear();
-        setProfile(null);
-        if (window.location.pathname.startsWith('/admin')) {
-          router.replace('/admin/login');
-        }
+        // Restaurado desde bfcache (botón Atrás/Adelante del navegador fuera del sitio)
+        signOut();
         return;
       }
-
-      const hasSession = checkSession();
-      if (!hasSession && window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin/login') {
-        router.replace('/admin/login');
-      }
+      checkSession();
     };
 
     window.addEventListener('pageshow', handlePageShow);
@@ -180,7 +164,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('pageshow', handlePageShow);
     };
-  }, [router, checkSession]);
+  }, [checkSession, signOut]);
 
   // Monitor de Inactividad de 5 Minutos (Cierre automático si no hay movimiento)
   useEffect(() => {
@@ -189,7 +173,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     let timeoutId: NodeJS.Timeout;
 
     const resetTimer = () => {
-      sessionStorage.setItem('hv_last_activity', Date.now().toString());
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('hv_last_activity', Date.now().toString());
+      }
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         signOut('inactivity');
@@ -200,7 +186,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     let lastUpdate = 0;
     const onActivity = () => {
       const now = Date.now();
-      if (now - lastUpdate > 1000) { // Throttle a 1 segundo para no recargar CPU
+      if (now - lastUpdate > 2000) { // Throttle a 2 segundos
         lastUpdate = now;
         resetTimer();
       }
@@ -213,13 +199,15 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     // Iniciar temporizador
     resetTimer();
 
-    // Verificación de respaldo periódica cada 10s (útil si la pestaña estuvo minimizada)
+    // Verificación pasiva cada 15s
     const intervalId = setInterval(() => {
-      const last = Number(sessionStorage.getItem('hv_last_activity') || Date.now());
-      if (Date.now() - last >= INACTIVITY_TIMEOUT_MS) {
-        signOut('inactivity');
+      if (typeof window !== 'undefined') {
+        const last = Number(sessionStorage.getItem('hv_last_activity') || Date.now());
+        if (Date.now() - last >= INACTIVITY_TIMEOUT_MS) {
+          signOut('inactivity');
+        }
       }
-    }, 10000);
+    }, 15000);
 
     return () => {
       clearTimeout(timeoutId);
@@ -233,7 +221,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const switchRole = (newRole: AdminRole) => {
     const newProfile = OFFICIAL_ADMIN_PROFILES[newRole];
     setProfile(newProfile);
-    localStorage.setItem('hv_admin_profile', JSON.stringify(newProfile));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hv_admin_profile', JSON.stringify(newProfile));
+    }
   };
 
   return (

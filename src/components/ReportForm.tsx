@@ -1055,17 +1055,27 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             {/* Pestaña 1: DNI Azul */}
             {dniTab === 'azul' && (
               <div className="space-y-3">
-                <div className="rounded-2xl border-2 border-[#D3B9B9] overflow-hidden bg-slate-50 flex items-center justify-center p-2">
+                <div className="rounded-2xl border-2 border-[#D3B9B9] overflow-hidden bg-white flex flex-col items-center justify-center p-3 shadow-xs">
                   <img 
                     src="/images/dni/ubigeo_dni_azul.png" 
                     alt="Ubicación del Ubigeo en DNI Azul según RENIEC" 
-                    className="max-h-56 w-auto object-contain rounded-xl"
+                    className="w-full max-h-56 object-contain rounded-xl"
+                    loading="eager"
                   />
+                  <div className="mt-2 w-full py-1.5 px-3 bg-[#FAF8F5] rounded-xl border border-[#D3B9B9]/60 flex items-center justify-between text-[11px] text-[#1a2527]">
+                    <span className="font-bold flex items-center gap-1 text-[#d30684]">
+                      <GoogleIcon name="pin_drop" size={14} />
+                      <span>Anverso (Frente):</span>
+                    </span>
+                    <span className="font-mono font-bold bg-[#fdf2f8] px-2 py-0.5 rounded text-[#d30684] border border-[#d30684]/20">
+                      Junto a Fecha Nac. · 6 dígitos
+                    </span>
+                  </div>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-[#fdf2f8] border border-[#d30684]/30 text-xs text-slate-700 leading-relaxed">
                   <strong className="text-[#d30684] block mb-1">Explicación oficial RENIEC (DNI Azul):</strong>
-                  Está en la parte delantera de tu documento, exactamente al costado de tu fecha de nacimiento, junto a la palabra <strong>"Ubigeo"</strong>. Son 6 números juntos (ejemplo: <code>123456</code>).
+                  Está en la parte delantera de tu documento, exactamente al costado de tu fecha de nacimiento, junto a la palabra <strong>"Ubigeo"</strong>. Son 6 números juntos (ejemplo: <code>150132</code> para San Juan de Lurigancho).
                 </div>
               </div>
             )}
@@ -1073,12 +1083,22 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             {/* Pestaña 2: DNIe (versiones anteriores) */}
             {dniTab === 'dnie' && (
               <div className="space-y-3">
-                <div className="rounded-2xl border-2 border-[#D3B9B9] overflow-hidden bg-slate-50 flex items-center justify-center p-2">
+                <div className="rounded-2xl border-2 border-[#D3B9B9] overflow-hidden bg-white flex flex-col items-center justify-center p-3 shadow-xs">
                   <img 
                     src="/images/dni/ubigeo_dnie.png" 
                     alt="Ubicación del Ubigeo en DNI Electrónico según RENIEC" 
-                    className="max-h-56 w-auto object-contain rounded-xl"
+                    className="w-full max-h-56 object-contain rounded-xl"
+                    loading="eager"
                   />
+                  <div className="mt-2 w-full py-1.5 px-3 bg-[#FAF8F5] rounded-xl border border-[#D3B9B9]/60 flex items-center justify-between text-[11px] text-[#1a2527]">
+                    <span className="font-bold flex items-center gap-1 text-[#d30684]">
+                      <GoogleIcon name="pin_drop" size={14} />
+                      <span>Reverso (Atrás):</span>
+                    </span>
+                    <span className="font-mono font-bold bg-[#fdf2f8] px-2 py-0.5 rounded text-[#d30684] border border-[#d30684]/20">
+                      Al lado del chip · 6 dígitos
+                    </span>
+                  </div>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-[#fdf2f8] border border-[#d30684]/30 text-xs text-slate-700 leading-relaxed">
@@ -1091,12 +1111,22 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             {/* Pestaña 3: DNIe desde 2020 */}
             {dniTab === 'dnie_2020' && (
               <div className="space-y-3">
-                <div className="rounded-2xl border-2 border-[#D3B9B9] overflow-hidden bg-slate-50 flex items-center justify-center p-2">
+                <div className="rounded-2xl border-2 border-[#D3B9B9] overflow-hidden bg-white flex flex-col items-center justify-center p-3 shadow-xs">
                   <img 
                     src="/images/dni/ubigeo_dnie_2020.png" 
                     alt="Ubicación del Ubigeo en DNI Electrónico desde 2020 según RENIEC" 
-                    className="max-h-56 w-auto object-contain rounded-xl"
+                    className="w-full max-h-56 object-contain rounded-xl"
+                    loading="eager"
                   />
+                  <div className="mt-2 w-full py-1.5 px-3 bg-[#FAF8F5] rounded-xl border border-[#D3B9B9]/60 flex items-center justify-between text-[11px] text-[#1a2527]">
+                    <span className="font-bold flex items-center gap-1 text-[#d30684]">
+                      <GoogleIcon name="pin_drop" size={14} />
+                      <span>Anverso (Frente inferior):</span>
+                    </span>
+                    <span className="font-mono font-bold bg-[#fdf2f8] px-2 py-0.5 rounded text-[#d30684] border border-[#d30684]/20">
+                      Debajo de Nac. · 6 dígitos
+                    </span>
+                  </div>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-[#fdf2f8] border border-[#d30684]/30 text-xs text-slate-700 leading-relaxed">

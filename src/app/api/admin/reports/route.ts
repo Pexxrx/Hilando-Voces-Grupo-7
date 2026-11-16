@@ -46,13 +46,8 @@ export async function GET(req: NextRequest) {
       console.warn('Supabase no disponible o vacío, sirviendo dataset oficial MOCK_REPORTS_25:', dbErr);
     }
 
-    // Combinar reportes de base de datos con los 25 reportes territoriales sintéticos de SJL
-    // asegurando que no haya duplicados por ID o ticket_code
-    const dbTicketCodes = new Set(dbReports.map((r) => r.ticket_code));
-    const combinedReports: ExtendedReport[] = [
-      ...dbReports,
-      ...MOCK_REPORTS_25.filter((m) => !dbTicketCodes.has(m.ticket_code)),
-    ];
+    // Dataset oficial: Únicamente reportes reales registrados
+    const combinedReports: ExtendedReport[] = [...dbReports];
 
     // Aplicar filtros en memoria si vienen parámetros
     let filtered = combinedReports;
