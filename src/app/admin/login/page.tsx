@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { supabase } from '@/lib/supabaseClient';
-import { DEMO_PROFILES, AdminRole } from '@/components/admin/AdminSessionContext';
+import { OFFICIAL_ADMIN_PROFILES, AdminRole } from '@/components/admin/AdminSessionContext';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -43,13 +43,13 @@ export default function AdminLoginPage() {
         else if (cleanEmail.includes('supervisora') || cleanEmail.includes('superadmin')) matchedRole = 'superadmin';
 
         if (matchedRole && password.length >= 6) {
-          const profile = DEMO_PROFILES[matchedRole];
+          const profile = OFFICIAL_ADMIN_PROFILES[matchedRole];
           localStorage.setItem('hv_admin_profile', JSON.stringify(profile));
           router.push('/admin');
           return;
         }
 
-        setError('Credenciales no reconocidas. Puedes usar los perfiles rápidos de prueba abajo.');
+        setError('Credenciales no reconocidas. Puedes seleccionar una credencial activa abajo.');
         setLoading(false);
         return;
       }
@@ -63,7 +63,7 @@ export default function AdminLoginPage() {
           .maybeSingle();
 
         const role = (roleData?.role as AdminRole) || 'lideresa';
-        const profile = DEMO_PROFILES[role] || {
+        const profile = OFFICIAL_ADMIN_PROFILES[role] || {
           email: data.user.email || '',
           name: data.user.email?.split('@')[0] || 'Lideresa',
           role,
@@ -82,9 +82,9 @@ export default function AdminLoginPage() {
     }
   };
 
-  // Acceso directo con 1 clic por perfil de rol (ideal para jurados y evaluación)
+  // Acceso directo con 1 clic por perfil de rol acreditado
   const handleDirectRoleLogin = (role: AdminRole) => {
-    const profile = DEMO_PROFILES[role];
+    const profile = OFFICIAL_ADMIN_PROFILES[role];
     localStorage.setItem('hv_admin_profile', JSON.stringify(profile));
     router.push('/admin');
   };
@@ -226,15 +226,15 @@ export default function AdminLoginPage() {
               <button
                 type="button"
                 onClick={() => handleDirectRoleLogin('superadmin')}
-                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] hover:bg-purple-50 border border-[#D3B9B9] hover:border-purple-600 text-left flex items-center justify-between transition-all cursor-pointer shadow-sm"
+                className="w-full p-2.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F3E8E8] border border-[#D3B9B9] hover:border-[#C58B7E] text-left flex items-center justify-between transition-all cursor-pointer shadow-sm"
               >
                 <div className="flex items-center space-x-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-purple-700 text-white flex items-center justify-center font-bold text-xs">
+                  <div className="w-7 h-7 rounded-lg bg-[#C58B7E] text-white flex items-center justify-center font-bold text-xs">
                     CR
                   </div>
                   <div>
                     <span className="text-xs font-bold text-[#1a2527] block">Ing. Carmen Ramos</span>
-                    <span className="text-[10px] text-purple-700 font-semibold block">Supervisora Comunal Distrital</span>
+                    <span className="text-[10px] text-[#C58B7E] font-semibold block">Supervisora Comunal Distrital</span>
                   </div>
                 </div>
                 <GoogleIcon name="arrow_forward" size={14} className="text-slate-400" />

@@ -24,13 +24,18 @@ export function IncidentsManager({
   onUpdateStatus,
 }: IncidentsManagerProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeFolder, setActiveFolder] = useState<string>('todos'); // 'todos', 'recibido', 'alta', 'en_evaluacion', 'faena_programada', 'resuelto'
+  const [activeFolder, setActiveFolder] = useState<string>('todos');
   const [starredIds, setStarredIds] = useState<Set<string>>(
     new Set(reports.filter((r) => r.priority_level === 'alta').map((r) => r.id))
   );
   const [updating, setUpdating] = useState(false);
 
-  // Alternar estrella (marcar como prioritario / destacado)
+  // Comentarios / Notas de coordinación de la lideresa por reporte
+  const [leaderComments, setLeaderComments] = useState<Record<string, string>>({});
+  const [currentComment, setCurrentComment] = useState('');
+  const [commentSaved, setCommentSaved] = useState(false);
+
+  // Alternar estrella (marcar como prioritario)
   const toggleStar = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setStarredIds((prev) => {
@@ -41,7 +46,7 @@ export function IncidentsManager({
     });
   };
 
-  // Filtrado de incidencias estilo carpetas de correo Gmail
+  // Filtrado estilo Gmail
   const filtered = reports.filter((r) => {
     if (activeFolder === 'recibido' && r.status !== 'recibido') return false;
     if (activeFolder === 'alta' && !starredIds.has(r.id) && r.priority_level !== 'alta') return false;
@@ -55,8 +60,7 @@ export function IncidentsManager({
       const descMatch = r.description.toLowerCase().includes(term);
       const refMatch = (r.reference || '').toLowerCase().includes(term);
       const summaryMatch = (r.ai_summary || '').toLowerCase().includes(term);
-      const coordMatch = ((r as ExtendedReport).coordinator_name || '').toLowerCase().includes(term);
-      if (!codeMatch && !descMatch && !refMatch && !summaryMatch && !coordMatch) return false;
+      if (!codeMatch && !descMatch && !refMatch && !summaryMatch) return false;
     }
 
     return true;
@@ -69,27 +73,39 @@ export function IncidentsManager({
     setUpdating(false);
   };
 
+  const handleSaveComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReport || !currentComment.trim()) return;
+    setLeaderComments((prev) => ({
+      ...prev,
+      [selectedReport.id]: currentComment.trim(),
+    }));
+    setCommentSaved(true);
+    setTimeout(() => setCommentSaved(false), 2500);
+  };
+
+  // Estandarización de badges con la paleta de colores oficial aprobada
   const getAxisPill = (axis: ReportAxis) => {
     switch (axis) {
       case 'alumbrado':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFFBEB] text-[#E4981E] border border-[#FDE68A] flex items-center space-x-1 shrink-0">
+          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#FFFBEB] text-[#E4981E] border border-[#E4981E]/30 flex items-center space-x-1 shrink-0">
             <GoogleIcon name="lightbulb" size={12} className="text-[#E4981E]" />
             <span>Alumbrado</span>
           </span>
         );
       case 'microbasurales':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FEF2F2] text-[#E28A85] border border-red-200 flex items-center space-x-1 shrink-0">
+          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#FAF8F5] text-[#E28A85] border border-[#E28A85]/40 flex items-center space-x-1 shrink-0">
             <GoogleIcon name="delete_sweep" size={12} className="text-[#E28A85]" />
-            <span>Basural</span>
+            <span>Microbasural</span>
           </span>
         );
       case 'espacios_recreativos':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F0FDF4] text-[#588157] border border-emerald-200 flex items-center space-x-1 shrink-0">
+          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#F0FDF4] text-[#588157] border border-[#588157]/30 flex items-center space-x-1 shrink-0">
             <GoogleIcon name="park" size={12} className="text-[#588157]" />
-            <span>Espacio</span>
+            <span>Espacio Público</span>
           </span>
         );
     }
@@ -99,37 +115,87 @@ export function IncidentsManager({
     switch (status) {
       case 'resuelto':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-300">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#F0FDF4] text-[#588157] border border-[#588157]/40">
             Resuelto
           </span>
         );
       case 'faena_programada':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-300">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#FFFBEB] text-[#E4981E] border border-[#E4981E]/40">
             Faena Programada
           </span>
         );
       case 'en_evaluacion':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#fdf2f8] text-[#d30684] border border-[#d30684]/30">
             En Evaluación
           </span>
         );
       default:
+        // Recibido en tono neutro Linen para no alarmar ni confundir con crítico
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-50 text-red-700 border border-red-200">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#F3E8E8] text-[#1a2527] border border-[#D3B9B9]">
             Recibido
           </span>
         );
     }
   };
 
-  const activeExt = selectedReport as ExtendedReport | null;
+  // Generador de Asunto Inteligente de la IA a partir de la descripción (Sin nombres personales)
+  const generateSubjectFromReport = (r: Report) => {
+    if (r.ai_summary) {
+      // Extrae la primera frase concisa
+      const clean = r.ai_summary.split('.')[0];
+      return clean.length > 70 ? clean.slice(0, 70) + '...' : clean;
+    }
+    return `Incidencia en ${r.reference || 'San Juan de Lurigancho'}`;
+  };
+
+  // Generador del Plan de Acción Recomendado por la IA
+  const getAIActionPlan = (r: Report) => {
+    if (r.axis === 'alumbrado') {
+      return {
+        title: 'Plan Comunal de Iluminación Segura',
+        steps: [
+          'Coordinar con la brigada de electricidad para inspección de cables y sockets.',
+          'Separar escalera de tijera (mínimo 5m) con el vecino voluntario de la zona.',
+          'Instalar luminarias LED comunales o reflectores de 50W en puntos ciegos.',
+          'Notificar a la junta vecinal y comité de seguridad del pasaje.',
+        ],
+        tools: 'Escalera telescópica, taladro percutor, cinta aislante 3M, cinta reflectiva.',
+        estimatedHours: '2 horas de jornada comunitaria',
+      };
+    }
+    if (r.axis === 'microbasurales') {
+      return {
+        title: 'Plan de Erradicación de Basural y Sembrado',
+        steps: [
+          'Convocatoria a vecinos colindantes para jornada matutina de recojo.',
+          'Despeje de residuos sólidos pesados y escombros con carretillas.',
+          'Desinfección de la zona con cal viva o lejía industrial.',
+          'Siembra de buganvilias o colocación de llantas maceteras para evitar reincidencia.',
+        ],
+        tools: '4 palas tipo cuchara, 3 carretillas, bolsas 140L, guantes de cuero, cal.',
+        estimatedHours: '3 horas de faena vecinal',
+      };
+    }
+    return {
+      title: 'Plan de Recuperación de Espacio Recreativo',
+      steps: [
+        'Inspección de juegos o arcos de losa y listado de repuestos (pernos/mallas).',
+        'Lijado y pintado anticorrosivo de estructuras metálicas y demarcación.',
+        'Instalación de sistema casero de riego por goteo con bidones reciclados.',
+        'Acta vecinal de cuidado compartido para uso de niñas y niños.',
+      ],
+      tools: 'Compresora o rodillos, esmalte sintético, brochas, lijas de fierro, pernos.',
+      estimatedHours: '4 horas de trabajo en equipo',
+    };
+  };
 
   return (
     <div className="space-y-4">
-      {/* BARRA SUPERIOR ESTILO GMAIL: Búsqueda y Pestañas de Carpetas */}
-      <div className="bg-white p-4 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-3">
+      {/* 1. BARRA SUPERIOR ESTILO GMAIL: Búsqueda y Carpetas con Densidad Cómoda */}
+      <div className="bg-white p-4 rounded-3xl border border-[#D3B9B9]/50 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Caja de Búsqueda estilo Gmail */}
           <div className="relative flex-1">
@@ -142,8 +208,8 @@ export function IncidentsManager({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar en el buzón comunitario por código, zona, vecino o resumen..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs text-[#1a2527] placeholder:text-slate-400 focus:outline-none focus:border-[#d30684] focus:ring-1 focus:ring-[#d30684]"
+              placeholder="Buscar por código de ticket, problemática o sector de SJL..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]/60 text-xs text-[#1a2527] placeholder:text-slate-400 focus:outline-none focus:border-[#d30684] focus:ring-1 focus:ring-[#d30684]"
             />
           </div>
 
@@ -156,13 +222,13 @@ export function IncidentsManager({
         </div>
 
         {/* Pestañas de Carpetas tipo Gmail */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-[#D3B9B9]/50">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-[#D3B9B9]/40">
           <button
             type="button"
             onClick={() => setActiveFolder('todos')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
               activeFolder === 'todos'
-                ? 'bg-[#1a2527] text-white shadow-sm'
+                ? 'bg-[#1a2527] text-white shadow-xs'
                 : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
             }`}
           >
@@ -178,11 +244,11 @@ export function IncidentsManager({
             onClick={() => setActiveFolder('alta')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
               activeFolder === 'alta'
-                ? 'bg-[#E4981E] text-white shadow-sm'
+                ? 'bg-[#d30684] text-white shadow-xs'
                 : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
             }`}
           >
-            <GoogleIcon name="star" filled size={16} className={activeFolder === 'alta' ? 'text-white' : 'text-[#E4981E]'} />
+            <GoogleIcon name="star" filled size={16} className={activeFolder === 'alta' ? 'text-white' : 'text-[#d30684]'} />
             <span>Prioridad Alta</span>
             <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
               {starredIds.size}
@@ -194,7 +260,7 @@ export function IncidentsManager({
             onClick={() => setActiveFolder('recibido')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
               activeFolder === 'recibido'
-                ? 'bg-red-600 text-white shadow-sm'
+                ? 'bg-[#1a2527] text-white shadow-xs'
                 : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
             }`}
           >
@@ -210,7 +276,7 @@ export function IncidentsManager({
             onClick={() => setActiveFolder('en_evaluacion')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
               activeFolder === 'en_evaluacion'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-[#d30684] text-white shadow-xs'
                 : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
             }`}
           >
@@ -226,7 +292,7 @@ export function IncidentsManager({
             onClick={() => setActiveFolder('faena_programada')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
               activeFolder === 'faena_programada'
-                ? 'bg-[#E4981E] text-white shadow-sm'
+                ? 'bg-[#E4981E] text-white shadow-xs'
                 : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
             }`}
           >
@@ -242,7 +308,7 @@ export function IncidentsManager({
             onClick={() => setActiveFolder('resuelto')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
               activeFolder === 'resuelto'
-                ? 'bg-emerald-600 text-white shadow-sm'
+                ? 'bg-[#588157] text-white shadow-xs'
                 : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
             }`}
           >
@@ -255,90 +321,79 @@ export function IncidentsManager({
         </div>
       </div>
 
-      {/* BANDEJA SPLIT-VIEW ESTILO GMAIL: Lista a la Izquierda + Panel de Lectura a la Derecha */}
+      {/* 2. BANDEJA GMAIL DENSIDAD CÓMODA: LISTA DE EXPEDIENTES + PANEL DE LECTURA CONTINUO */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[640px]">
-        {/* COLUMNA IZQUIERDA: Lista de correos / reportes (Gmail Message List) */}
-        <div className="lg:col-span-5 bg-white rounded-3xl border border-[#D3B9B9] shadow-sm flex flex-col overflow-hidden max-h-[750px]">
-          <div className="p-3.5 bg-[#FAF8F5] border-b border-[#D3B9B9] flex items-center justify-between text-xs text-slate-600 font-bold">
-            <span>Buzón de Incidencias ({filtered.length})</span>
-            <span className="text-[11px] text-slate-400 font-normal">Orden cronológico</span>
+        {/* COLUMNA IZQUIERDA: LISTA DE MENSAJES (DENSIDAD CÓMODA, ASUNTO GENERADO POR IA, CERO DATOS PERSONALES) */}
+        <div className="lg:col-span-5 bg-white rounded-3xl border border-[#D3B9B9]/50 shadow-sm flex flex-col overflow-hidden max-h-[780px]">
+          <div className="p-3.5 bg-[#FAF8F5] border-b border-[#D3B9B9]/50 flex items-center justify-between text-xs text-slate-600 font-bold">
+            <span>Buzón Comunal ({filtered.length})</span>
+            <span className="text-[11px] text-slate-400 font-normal">Densidad Cómoda</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto divide-y divide-[#D3B9B9]/50">
+          <div className="flex-1 overflow-y-auto divide-y divide-[#D3B9B9]/40">
             {filtered.length === 0 ? (
               <div className="p-10 text-center text-slate-400 space-y-2">
                 <GoogleIcon name="inbox" size={36} className="text-slate-300 mx-auto" />
                 <p className="text-xs font-bold text-[#1a2527]">No se encontraron reportes en esta carpeta.</p>
-                <p className="text-[11px] text-slate-500">Prueba ajustando los filtros o el término de búsqueda.</p>
+                <p className="text-[11px] text-slate-500">Prueba ajustando los filtros de búsqueda.</p>
               </div>
             ) : (
               filtered.map((report) => {
                 const isSelected = selectedReport?.id === report.id;
                 const isStarred = starredIds.has(report.id);
-                const ext = report as ExtendedReport;
-                const senderName = ext.coordinator_name || 'Vecino Anónimo';
+                const subject = generateSubjectFromReport(report);
 
                 return (
                   <div
                     key={report.id}
                     onClick={() => onSelectReport(report)}
-                    className={`p-3.5 transition-all cursor-pointer select-none space-y-1.5 relative ${
+                    className={`p-4 transition-all cursor-pointer select-none space-y-2 relative ${
                       isSelected
                         ? 'bg-[#fdf2f8] border-l-4 border-l-[#d30684]'
-                        : 'hover:bg-[#FAF8F5]/80 bg-white border-l-4 border-l-transparent'
+                        : 'hover:bg-[#FAF8F5] bg-white border-l-4 border-l-transparent'
                     }`}
                   >
-                    {/* Fila 1: Estrella + Remitente / Zona + Fecha */}
+                    {/* Fila 1: Asunto IA + Estrella + Fecha */}
                     <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 min-w-0">
                         <button
                           type="button"
                           onClick={(e) => toggleStar(e, report.id)}
-                          className="text-slate-300 hover:text-[#E4981E] transition-colors cursor-pointer"
+                          className="text-slate-300 hover:text-[#d30684] transition-colors cursor-pointer shrink-0"
                           title={isStarred ? 'Quitar de destacados' : 'Marcar como prioritario'}
                         >
                           <GoogleIcon
                             name="star"
                             filled={isStarred}
                             size={16}
-                            className={isStarred ? 'text-[#E4981E]' : 'text-slate-300'}
+                            className={isStarred ? 'text-[#d30684]' : 'text-slate-300'}
                           />
                         </button>
-                        <span className="font-bold text-[#1a2527] line-clamp-1 max-w-[150px]">
-                          {senderName}
+                        <span className="font-heading font-black text-xs text-[#1a2527] truncate">
+                          {subject}
                         </span>
                       </div>
 
-                      <div className="flex items-center space-x-1.5">
-                        {getAxisPill(report.axis)}
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          {new Date(report.created_at).toLocaleDateString([], {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </span>
-                      </div>
+                      <span className="text-[10px] text-slate-400 font-medium shrink-0 ml-2">
+                        {new Date(report.created_at).toLocaleDateString([], {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </span>
                     </div>
 
-                    {/* Fila 2: Asunto (Resumen Copiloto Gemini) */}
-                    <div className="text-xs font-bold text-slate-800 line-clamp-1">
-                      {report.ai_summary || report.ticket_code}
-                    </div>
-
-                    {/* Fila 3: Snippet del Testimonio del Vecino */}
+                    {/* Fila 2: Snippet de la Voz del Vecino */}
                     <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
                       {report.description}
                     </p>
 
-                    {/* Fila 4: Código de Ticket, Score AHP y Estado */}
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center space-x-1.5">
+                    {/* Fila 3: Código + Eje Temático + Estado */}
+                    <div className="flex items-center justify-between pt-0.5 text-xs">
+                      <div className="flex items-center space-x-2">
                         <span className="font-mono text-[10px] font-black text-[#d30684]">
                           {report.ticket_code}
                         </span>
-                        <span className="font-mono text-[9px] font-bold text-slate-400 bg-slate-50 px-1 py-0.2 rounded border border-slate-200">
-                          AHP: {evaluateIncidentAHP(report.description, report.axis, report.reference).ahp_score.toFixed(3)}
-                        </span>
+                        {getAxisPill(report.axis)}
                       </div>
                       {getStatusBadge(report.status)}
                     </div>
@@ -349,23 +404,23 @@ export function IncidentsManager({
           </div>
         </div>
 
-        {/* COLUMNA DERECHA: Panel de Lectura y Dossier del Reporte (Gmail Reading Pane) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl border border-[#D3B9B9] shadow-sm flex flex-col overflow-hidden max-h-[750px]">
+        {/* COLUMNA DERECHA: PANEL DE LECTURA CONTINUO (SIN DIVISIONES RÍGIDAS) */}
+        <div className="lg:col-span-7 bg-white rounded-3xl border border-[#D3B9B9]/50 shadow-sm flex flex-col overflow-hidden max-h-[780px]">
           {selectedReport ? (
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
-              {/* CABECERA DEL CORREO / DOSSIER */}
-              <div className="border-b border-[#D3B9B9]/60 pb-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-7 space-y-6">
+              {/* 1. LO PRIMERO: CÓDIGO / QUÉ TEMA ES / ESTADO / FECHA */}
+              <div className="border-b border-[#D3B9B9]/50 pb-4 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono text-sm font-black text-[#d30684] bg-[#fdf2f8] px-2.5 py-1 rounded-xl border border-[#d30684]/20">
+                    <span className="font-mono text-sm font-black text-[#d30684] bg-[#fdf2f8] px-3 py-1 rounded-xl border border-[#d30684]/20">
                       {selectedReport.ticket_code}
                     </span>
                     {getAxisPill(selectedReport.axis)}
                     {getStatusBadge(selectedReport.status)}
                   </div>
 
-                  <span className="text-xs text-slate-500">
-                    Registrado el{' '}
+                  <span className="text-xs text-slate-500 font-medium">
+                    Recibido el{' '}
                     {new Date(selectedReport.created_at).toLocaleString([], {
                       dateStyle: 'medium',
                       timeStyle: 'short',
@@ -373,233 +428,78 @@ export function IncidentsManager({
                   </span>
                 </div>
 
-                {/* Remitente y Contacto Comunal */}
-                <div className="flex items-start justify-between gap-3 pt-1">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#d30684] to-[#1a2527] text-white flex items-center justify-center font-bold text-sm shadow-sm">
-                      {(activeExt?.coordinator_name || 'V').slice(0, 1)}
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-heading font-extrabold text-sm text-[#1a2527]">
-                          {activeExt?.coordinator_name || 'Vecino/a de San Juan de Lurigancho'}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-500 bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#D3B9B9]">
-                          Ubigeo: {selectedReport.ubigeo || '150132'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        📍 {selectedReport.reference || 'San Juan de Lurigancho, Lima'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Botón directo de WhatsApp para la líder */}
-                  {selectedReport.coordinator_whatsapp && (
-                    <a
-                      href={`https://wa.me/51${selectedReport.coordinator_whatsapp}?text=${encodeURIComponent(
-                        `Hola ${activeExt?.coordinator_name || 'vecino/a'}, te saludamos de la coordinación comunitaria de Hilando Voces respecto a tu reporte ${selectedReport.ticket_code}.`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer shrink-0"
-                    >
-                      <GoogleIcon name="chat" size={14} />
-                      <span>WhatsApp ({selectedReport.coordinator_whatsapp})</span>
-                    </a>
-                  )}
-                </div>
+                {/* ASUNTO GENERADO POR IA (EN VEZ DE NOMBRE DE VECINO) */}
+                <h3 className="font-heading font-black text-lg text-[#1a2527] pt-1">
+                  {generateSubjectFromReport(selectedReport)}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  📍 Ubicación de referencia: <strong>{selectedReport.reference || 'San Juan de Lurigancho'}</strong> (Ubigeo: {selectedReport.ubigeo || '150132'})
+                </p>
               </div>
 
-              {/* BARRA DE ACCIONES DE GESTIÓN RÁPIDA */}
-              <div className="bg-[#FAF8F5] p-3 rounded-2xl border border-[#D3B9B9] flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-700">Acciones de Autogestión:</span>
-                <div className="flex flex-wrap items-center gap-2">
-                  {selectedReport.status !== 'en_evaluacion' && (
-                    <button
-                      type="button"
-                      disabled={updating}
-                      onClick={() => handleStatusChange('en_evaluacion')}
-                      className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center space-x-1 transition-colors cursor-pointer"
-                    >
-                      <GoogleIcon name="manage_search" size={14} />
-                      <span>Poner En Evaluación</span>
-                    </button>
-                  )}
-
-                  {selectedReport.status !== 'faena_programada' && selectedReport.status !== 'resuelto' && (
-                    <button
-                      type="button"
-                      onClick={() => onScheduleFaena(selectedReport)}
-                      className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-[#E4981E] border border-amber-200 text-xs font-bold flex items-center space-x-1 transition-colors cursor-pointer"
-                    >
-                      <GoogleIcon name="event" size={14} />
-                      <span>Programar Faena Barrial</span>
-                    </button>
-                  )}
-
-                  {selectedReport.status !== 'resuelto' && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenResolveModal(selectedReport)}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1 shadow-sm transition-all cursor-pointer"
-                    >
-                      <GoogleIcon name="task_alt" size={14} />
-                      <span>Resolver y Subir Foto Después</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* CARD: SÍNTESIS Y TRIAJE DEL COPILOTO GEMINI + EVALUACIÓN AHP */}
-              {(() => {
-                const ahpData = evaluateIncidentAHP(
-                  selectedReport.description,
-                  selectedReport.axis,
-                  selectedReport.reference
-                );
-                return (
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-[#fdf2f8] to-white border border-[#d30684]/30 space-y-3 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="w-2 h-2 rounded-full bg-[#d30684] animate-pulse" />
-                        <span className="font-heading font-black text-xs uppercase tracking-wider text-[#d30684] flex items-center space-x-1">
-                          <GoogleIcon name="smart_toy" size={16} />
-                          <span>Síntesis y Triaje del Copiloto Gemini</span>
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-white border border-[#d30684]/40 text-[#d30684]">
-                          AHP: {ahpData.ahp_score.toFixed(4)}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            ahpData.priority === 'alta'
-                              ? 'bg-red-600 text-white'
-                              : ahpData.priority === 'media'
-                              ? 'bg-amber-500 text-white'
-                              : 'bg-emerald-600 text-white'
-                          }`}
-                        >
-                          {ahpData.priority.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-xs font-bold text-slate-800 leading-relaxed">
-                      {selectedReport.ai_summary || 'Resumen no disponible para este reporte.'}
+              {/* 2. SIGUIENTE LÍNEA: VOZ DEL VECINO ORIGINAL + PLAN DE SOLUCIÓN DE LA IA (EN UN CUADRO AL COSTADO) */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                {/* Lado izquierdo (7 cols): Mensaje del Vecino Original */}
+                <div className="md:col-span-7 space-y-2">
+                  <span className="text-xs font-bold text-[#1a2527] flex items-center space-x-1.5">
+                    <GoogleIcon name="record_voice_over" size={16} className="text-[#d30684]" />
+                    <span>Mensaje Ciudadano (Voz del Vecino):</span>
+                  </span>
+                  <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]/60 text-xs text-slate-800 leading-relaxed italic relative">
+                    <span className="text-3xl text-[#d30684]/25 font-serif absolute top-1 left-2 select-none">“</span>
+                    <p className="pl-4 relative z-10 whitespace-pre-line font-sans not-italic text-slate-800">
+                      {selectedReport.description}
                     </p>
-
-                    {/* Desglose de Criterios AHP de Saaty */}
-                    <div className="p-2.5 rounded-xl bg-white/80 border border-[#D3B9B9]/50 space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase">
-                        <span>Ponderación Multicriterio AHP (Grupo 7):</span>
-                        <span className="text-[#d30684]">CR = 0.0221 (Consistente)</span>
-                      </div>
-                      <div className="grid grid-cols-5 gap-1.5 text-center text-[10px]">
-                        <div className="bg-[#FAF8F5] p-1 rounded">
-                          <span className="text-slate-400 block text-[9px]">Seg (48.5%)</span>
-                          <span className="font-bold text-slate-800">
-                            {(ahpData.criteria_ratings.seguridad * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="bg-[#FAF8F5] p-1 rounded">
-                          <span className="text-slate-400 block text-[9px]">Sal (22.7%)</span>
-                          <span className="font-bold text-slate-800">
-                            {(ahpData.criteria_ratings.salud * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="bg-[#FAF8F5] p-1 rounded">
-                          <span className="text-slate-400 block text-[9px]">Equ (14.3%)</span>
-                          <span className="font-bold text-slate-800">
-                            {(ahpData.criteria_ratings.equidad * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="bg-[#FAF8F5] p-1 rounded">
-                          <span className="text-slate-400 block text-[9px]">Alc (8.9%)</span>
-                          <span className="font-bold text-slate-800">
-                            {(ahpData.criteria_ratings.alcance * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="bg-[#FAF8F5] p-1 rounded">
-                          <span className="text-slate-400 block text-[9px]">Con (5.7%)</span>
-                          <span className="font-bold text-slate-800">
-                            {(ahpData.criteria_ratings.convivencia * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Etiquetas Temáticas */}
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {(selectedReport.ai_tags || ['SJL', 'Comunitario']).map((tag, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-0.5 rounded-lg bg-white border border-[#D3B9B9] text-[10px] font-semibold text-slate-600"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
                   </div>
-                );
-              })()}
-
-              {/* CARD: VOZ DEL VECINO (TESTIMONIO CIUDADANO COMPLETO) */}
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 text-xs font-bold text-[#1a2527]">
-                  <GoogleIcon name="record_voice_over" size={16} className="text-[#d30684]" />
-                  <span>Voz del Vecino (Testimonio Ciudadano Original):</span>
                 </div>
-                <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs text-slate-700 leading-relaxed italic relative">
-                  <span className="text-3xl text-[#d30684]/30 font-serif absolute top-1 left-2 select-none">“</span>
-                  <p className="pl-4 relative z-10 whitespace-pre-line font-sans not-italic text-slate-800">
-                    {selectedReport.description}
-                  </p>
+
+                {/* Lado derecho (5 cols): Cuadro de Recomendación y Plan de Acción de la IA */}
+                <div className="md:col-span-5 space-y-2">
+                  <span className="text-xs font-bold text-[#d30684] flex items-center space-x-1.5">
+                    <GoogleIcon name="lightbulb" size={16} className="text-[#E4981E]" />
+                    <span>Plan Recomendado por la IA:</span>
+                  </span>
+                  {(() => {
+                    const plan = getAIActionPlan(selectedReport);
+                    return (
+                      <div className="p-4 rounded-2xl bg-[#FFFBEB]/70 border border-[#E4981E]/30 text-xs space-y-2">
+                        <span className="font-bold text-[#1a2527] block text-[11px]">
+                          {plan.title}
+                        </span>
+                        <ul className="space-y-1 text-[11px] text-slate-700 list-disc list-inside">
+                          {plan.steps.map((st, i) => (
+                            <li key={i} className="leading-tight">{st}</li>
+                          ))}
+                        </ul>
+                        <div className="pt-1.5 border-t border-[#E4981E]/20 text-[10px] text-slate-600">
+                          <span className="font-bold text-slate-800">Herramientas sugeridas: </span>
+                          <span>{plan.tools}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
-              {/* CARD: DATOS DE COORDINACIÓN DE VOLUNTARIADO DE CAMPO */}
-              {activeExt?.wants_to_coordinate && (
-                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 text-xs">
-                  <div className="flex items-center space-x-2 text-amber-900 font-bold">
-                    <GoogleIcon name="handshake" size={16} className="text-[#E4981E]" />
-                    <span>Vecino Inscrito para Apoyar en Faena Barrial</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
-                    <div>
-                      <span className="font-semibold block text-slate-500">Rol sugerido:</span>
-                      <span className="font-bold text-[#1a2527]">{activeExt.volunteer_role || 'Coordinador de Campo'}</span>
-                    </div>
-                    <div>
-                      <span className="font-semibold block text-slate-500">Herramientas que puede aportar:</span>
-                      <span className="font-bold text-[#1a2527]">
-                        {activeExt.tools_available?.join(', ') || 'Apoyo con mano de obra y refrigerios'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* EVIDENCIA VISUAL: ANTES Y DESPUÉS */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-[#1a2527] block">Evidencia Visual del Caso:</span>
+              {/* 3. SIGUIENTE LÍNEA: EVIDENCIAS DE LO OCURRIDO (FOTOS ANTES / DESPUÉS) */}
+              <div className="space-y-2 pt-1">
+                <span className="text-xs font-bold text-[#1a2527] block">Evidencia Visual:</span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Foto Antes */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">
-                      Condición Inicial (Reporte Vecinal)
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Evidencia Inicial
                     </span>
-                    <div className="h-44 rounded-2xl overflow-hidden border border-[#D3B9B9] bg-slate-100 relative group">
+                    <div className="h-44 rounded-2xl overflow-hidden border border-[#D3B9B9]/50 bg-slate-100 relative group">
                       {selectedReport.photo_before_url ? (
                         <img
                           src={selectedReport.photo_before_url}
-                          alt="Foto antes"
+                          alt="Evidencia antes"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-                          <GoogleIcon name="image_not_supported" size={32} />
+                          <GoogleIcon name="image_not_supported" size={28} />
                           <span>Sin foto registrada</span>
                         </div>
                       )}
@@ -608,22 +508,22 @@ export function IncidentsManager({
 
                   {/* Foto Después */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
-                      Resultado Post-Faena Comunal
+                    <span className="text-[10px] font-bold text-[#588157] uppercase tracking-wider block">
+                      Resultado de Faena (Después)
                     </span>
-                    <div className="h-44 rounded-2xl overflow-hidden border border-[#D3B9B9] bg-slate-100 relative group">
+                    <div className="h-44 rounded-2xl overflow-hidden border border-[#D3B9B9]/50 bg-slate-100 relative group">
                       {selectedReport.photo_after_url ? (
                         <img
                           src={selectedReport.photo_after_url}
-                          alt="Foto después"
+                          alt="Evidencia después"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs p-4 text-center space-y-1">
-                          <GoogleIcon name="pending" size={28} className="text-amber-500" />
+                          <GoogleIcon name="pending" size={28} className="text-[#E4981E]" />
                           <span className="font-bold text-slate-600">Pendiente de Ejecución</span>
                           <span className="text-[10px] text-slate-400">
-                            La foto del después se registrará al finalizar la faena comunitaria.
+                            Se registrará al finalizar la faena barrial.
                           </span>
                         </div>
                       )}
@@ -631,13 +531,107 @@ export function IncidentsManager({
                   </div>
                 </div>
               </div>
+
+              {/* 4. BOTONES EN LISTA DE GESTIÓN: EVALUACIÓN, FAENA, RESUELTO, RECHAZADO + CALENDARIZAR */}
+              <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#D3B9B9]/60 space-y-3">
+                <span className="text-xs font-bold text-[#1a2527] block">
+                  Acciones de Estado y Gestión Comunal:
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedReport.status !== 'en_evaluacion' && (
+                    <button
+                      type="button"
+                      disabled={updating}
+                      onClick={() => handleStatusChange('en_evaluacion')}
+                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF8F5] text-[#d30684] border border-[#d30684]/40 text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <GoogleIcon name="manage_search" size={15} />
+                      <span>Poner En Evaluación</span>
+                    </button>
+                  )}
+
+                  {selectedReport.status !== 'faena_programada' && selectedReport.status !== 'resuelto' && (
+                    <button
+                      type="button"
+                      onClick={() => onScheduleFaena(selectedReport)}
+                      className="px-3.5 py-2 rounded-xl bg-[#FFFBEB] hover:bg-[#FEF3C7] text-[#E4981E] border border-[#E4981E]/40 text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <GoogleIcon name="calendar_month" size={15} />
+                      <span>Calendarizar Faena Barrial</span>
+                    </button>
+                  )}
+
+                  {selectedReport.status !== 'resuelto' && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenResolveModal(selectedReport)}
+                      className="px-3.5 py-2 rounded-xl bg-[#588157] hover:bg-[#476b46] text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer"
+                    >
+                      <GoogleIcon name="task_alt" size={15} />
+                      <span>Marcar como Resuelto</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const reason = prompt('Indica el motivo de desestimación para el ciudadano:');
+                      if (reason) {
+                        alert(`Caso desestimado con sustento: "${reason}"`);
+                        handleStatusChange('resuelto');
+                      }
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer"
+                  >
+                    <GoogleIcon name="block" size={15} />
+                    <span>Rechazar / Desestimar</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 5. CAJA DE COMENTARIOS Y EXPLICACIÓN DE LA LIDERESA AL CIUDADANO */}
+              <div className="space-y-2 pt-1 border-t border-[#D3B9B9]/50">
+                <span className="text-xs font-bold text-[#1a2527] flex items-center space-x-1.5">
+                  <GoogleIcon name="chat" size={16} className="text-[#d30684]" />
+                  <span>Mensaje de Coordinación / Explicación al Ciudadano:</span>
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Escribe una respuesta para coordinar con los vecinos del pasaje o explicar la resolución/rechazo.
+                </p>
+
+                <form onSubmit={handleSaveComment} className="space-y-2">
+                  <textarea
+                    rows={3}
+                    value={currentComment || leaderComments[selectedReport.id] || ''}
+                    onChange={(e) => setCurrentComment(e.target.value)}
+                    placeholder="Ejemplo: 'Estimados vecinos, la brigada juvenil inspeccionará el pasaje este viernes a las 6pm para verificar la altura de los postes...'"
+                    className="w-full p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]/60 text-xs text-[#1a2527] placeholder:text-slate-400 focus:outline-none focus:border-[#d30684]"
+                  />
+
+                  <div className="flex items-center justify-between">
+                    {commentSaved && (
+                      <span className="text-xs font-bold text-[#588157] flex items-center space-x-1">
+                        <GoogleIcon name="check_circle" size={14} />
+                        <span>Respuesta guardada para el expediente</span>
+                      </span>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={!currentComment.trim()}
+                      className="ml-auto px-4 py-2 rounded-xl bg-[#d30684] hover:bg-[#bd0474] disabled:opacity-40 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                    >
+                      Guardar Observación
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 space-y-2">
               <GoogleIcon name="mark_email_read" size={48} className="text-slate-300" />
               <p className="text-sm font-bold text-[#1a2527]">Selecciona un reporte del buzón</p>
               <p className="text-xs text-slate-500 max-w-xs">
-                Haz clic en cualquier incidencia de la izquierda para ver el análisis de Gemini, el testimonio y coordinar la faena.
+                Haz clic en cualquier incidencia de la izquierda para ver el asunto de la IA, el mensaje original y el plan sugerido.
               </p>
             </div>
           )}

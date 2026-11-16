@@ -12,53 +12,105 @@ interface FaenasPlannerProps {
   onSelectReport: (report: Report) => void;
 }
 
+const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
 export function FaenasPlanner({
   reports,
   onOpenFaenaModal,
   onOpenResolveModal,
   onSelectReport,
 }: FaenasPlannerProps) {
-  // Faenas activas ya agendadas
-  const scheduled = reports.filter((r) => r.status === 'faena_programada');
-  // Casos en evaluación o recibidos con alta prioridad que ameritan ser programados
-  const readyForFaena = reports.filter(
-    (r) => (r.status === 'en_evaluacion' || r.status === 'recibido') && r.priority_level === 'alta'
-  );
-
-  // Estado del calendario mensual (Noviembre 2026)
+  // Navegación Dinámica entre Meses (Iniciando en Noviembre 2026)
+  const [currentMonth, setCurrentMonth] = useState<number>(10); // 10 = Noviembre (0-indexed)
+  const [currentYear, setCurrentYear] = useState<number>(2026);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  // Mapeo de faenas por día del mes de noviembre 2026
-  // Nov 21: 2 faenas, Nov 22: 1 faena, Nov 28: 1 faena, Nov 29: 1 faena
+  // Filtros dinámicos
+  const [axisFilter, setAxisFilter] = useState<string>('todos');
+  const [priorityFilter, setPriorityFilter] = useState<string>('todos');
+
+  // Navegar al mes anterior o siguiente
+  const handlePrevMonth = () => {
+    setSelectedDay(null);
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear((y) => y - 1);
+    } else {
+      setCurrentMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    setSelectedDay(null);
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear((y) => y + 1);
+    } else {
+      setCurrentMonth((m) => m + 1);
+    }
+  };
+
+  // Faenas agendadas
+  const scheduledReports = reports.filter((r) => r.status === 'faena_programada');
+
+  // Mapeo dinámico de faenas para cualquier mes/año
   const getFaenasForDay = (day: number) => {
-    return scheduled.filter((report) => {
+    const formattedMonth = (currentMonth + 1).toString().padStart(2, '0');
+    const formattedDay = day.toString().padStart(2, '0');
+    const targetDatePrefix = `${currentYear}-${formattedMonth}-${formattedDay}`;
+
+    return scheduledReports.filter((report) => {
+      // Filtros de Eje y Prioridad
+      if (axisFilter !== 'todos' && report.axis !== axisFilter) return false;
+      if (priorityFilter !== 'todos' && report.priority_level !== priorityFilter) return false;
+
       const ext = report as ExtendedReport;
       const dateStr = ext.scheduled_date || '';
-      if (dateStr.includes(`2026-11-${day.toString().padStart(2, '0')}`)) return true;
-      // Asignación por defecto de días si no viene la fecha exacta en BD
-      if (day === 21 && (report.id === 'rep-sjl-003' || report.id === 'rep-sjl-005')) return true;
-      if (day === 22 && report.id === 'rep-sjl-007') return true;
-      if (day === 28 && report.id === 'rep-sjl-016') return true;
-      if (day === 29 && report.id === 'rep-sjl-022') return true;
+      if (dateStr.includes(targetDatePrefix)) return true;
+
+      // Fallback predeterminado para el mes base de Noviembre 2026
+      if (currentYear === 2026 && currentMonth === 10) {
+        if (day === 21 && (report.id === 'rep-sjl-003' || report.id === 'rep-sjl-005')) return true;
+        if (day === 22 && report.id === 'rep-sjl-007') return true;
+        if (day === 28 && report.id === 'rep-sjl-016') return true;
+        if (day === 29 && report.id === 'rep-sjl-022') return true;
+      }
+
       return false;
     });
   };
 
-  // Construcción de la grilla de días de Noviembre 2026
-  // 1 de Noviembre 2026 fue Domingo (en grilla Lun-Dom, Lun a Sáb son 6 días vacíos al inicio)
-  const daysInNov = 30;
-  const startDayOffset = 6; // Domingo es el 7mo día de la semana (offset 6 para Lun=0)
-  const calendarCells = [];
+  // Construcción de celdas del calendario para el mes seleccionado
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  // Primer día de la semana (0 = Domingo, 1 = Lunes, ..., 6 = Sábado)
+  const firstDayWeekday = new Date(currentYear, currentMonth, 1).getDay();
+  // Convertir a Lunes = 0 (offset para cuadrícula Lun a Dom)
+  const startDayOffset = (firstDayWeekday + 6) % 7;
 
+  const calendarCells = [];
   for (let i = 0; i < startDayOffset; i++) {
     calendarCells.push({ empty: true, key: `empty-${i}` });
   }
-  for (let d = 1; d <= daysInNov; d++) {
-    calendarCells.push({ empty: false, day: d, faenas: getFaenasForDay(d), key: `day-${d}` });
+  for (let d = 1; d <= daysInMonth; d++) {
+    calendarCells.push({
+      empty: false,
+      day: d,
+      faenas: getFaenasForDay(d),
+      key: `day-${d}`,
+    });
   }
 
-  // Faenas filtradas según día seleccionado o todas
-  const displayedFaenas = selectedDay ? getFaenasForDay(selectedDay) : scheduled;
+  // Faenas filtradas que se mostrarán en la lista
+  const displayedFaenas = selectedDay
+    ? getFaenasForDay(selectedDay)
+    : scheduledReports.filter((r) => {
+        if (axisFilter !== 'todos' && r.axis !== axisFilter) return false;
+        if (priorityFilter !== 'todos' && r.priority_level !== priorityFilter) return false;
+        return true;
+      });
 
   const getAxisColor = (axis: string) => {
     switch (axis) {
@@ -75,81 +127,81 @@ export function FaenasPlanner({
 
   return (
     <div className="space-y-6">
-      {/* Banner de Introducción */}
-      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#D3B9B9] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2">
-            <GoogleIcon name="calendar_month" filled size={18} className="text-[#E4981E]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-[#E4981E]">
-              Agenda Comunitaria de Campo
+      {/* 1. CABECERA LIMPIA: NAVEGACIÓN ENTRE MESES + FILTROS DINÁMICOS */}
+      <div className="bg-white p-6 rounded-3xl border border-[#D3B9B9]/50 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#d30684] block">
+              Agenda Territorial
             </span>
-          </div>
-          <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-[#1a2527] tracking-tight">
-            Calendario Mensual de Faenas Barriales
-          </h2>
-          <p className="text-xs text-slate-600 max-w-xl leading-relaxed">
-            Cronograma operativo de jornadas vecinales en San Juan de Lurigancho: brigadas juveniles, checklist de herramientas y emisión de fichas técnicas oficiales.
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-3 bg-[#FFFBEB] border border-[#FDE68A] p-3.5 rounded-2xl shrink-0">
-          <div className="text-center">
-            <span className="text-3xl font-heading font-black text-[#E4981E] block leading-none">
-              {scheduled.length}
-            </span>
-            <span className="text-[10px] font-bold text-[#92400e] uppercase tracking-wider">
-              Faenas Activas
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* SECCIÓN DEL CALENDARIO MENSUAL (NOVIEMBRE 2026) */}
-      <div className="bg-white p-6 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center text-[#E4981E]">
-              <GoogleIcon name="date_range" size={20} />
+            <div className="flex items-center space-x-3">
+              <h2 className="font-heading font-black text-2xl text-[#1a2527] tracking-tight">
+                {MONTH_NAMES[currentMonth]} {currentYear}
+              </h2>
+              {/* Controles para moverse entre meses */}
+              <div className="flex items-center space-x-1 bg-[#FAF8F5] p-1 rounded-2xl border border-[#D3B9B9]/50">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="w-8 h-8 rounded-xl bg-white hover:bg-[#FAF8F5] text-slate-700 flex items-center justify-center transition-colors shadow-xs cursor-pointer"
+                  title="Mes anterior"
+                >
+                  <GoogleIcon name="chevron_left" size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="w-8 h-8 rounded-xl bg-white hover:bg-[#FAF8F5] text-slate-700 flex items-center justify-center transition-colors shadow-xs cursor-pointer"
+                  title="Mes siguiente"
+                >
+                  <GoogleIcon name="chevron_right" size={18} />
+                </button>
+              </div>
             </div>
-            <div>
-              <h3 className="font-heading font-bold text-lg text-[#1a2527]">
-                Noviembre 2026
-              </h3>
-              <p className="text-xs text-slate-500">
-                Selecciona cualquier día para filtrar las jornadas programadas
-              </p>
-            </div>
+            <p className="text-xs text-slate-500">
+              Planificación operativa de jornadas de trabajo vecinal en San Juan de Lurigancho
+            </p>
           </div>
 
-          <div className="flex items-center space-x-2 text-xs">
+          {/* Filtros por Eje y Prioridad */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {/* Filtro por Eje */}
+            <select
+              value={axisFilter}
+              onChange={(e) => setAxisFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-[#FAF8F5] border border-[#D3B9B9]/60 font-bold text-slate-700 focus:outline-none focus:border-[#d30684]"
+            >
+              <option value="todos">Todos los Ejes</option>
+              <option value="alumbrado">Alumbrado</option>
+              <option value="microbasurales">Microbasurales</option>
+              <option value="espacios_recreativos">Espacios</option>
+            </select>
+
+            {/* Filtro por Prioridad */}
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-[#FAF8F5] border border-[#D3B9B9]/60 font-bold text-slate-700 focus:outline-none focus:border-[#d30684]"
+            >
+              <option value="todos">Todas las Prioridades</option>
+              <option value="alta">Prioridad Alta</option>
+              <option value="media">Prioridad Media</option>
+            </select>
+
             {selectedDay && (
               <button
                 type="button"
                 onClick={() => setSelectedDay(null)}
-                className="px-3 py-1.5 rounded-xl bg-[#FAF8F5] hover:bg-slate-200 border border-[#D3B9B9] font-bold text-slate-700 transition-colors cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 font-bold text-slate-700 transition-colors"
               >
-                Ver Todo el Mes
+                Ver todo el mes
               </button>
             )}
-            <div className="flex items-center space-x-3 text-[11px] text-slate-600 bg-[#FAF8F5] px-3 py-1.5 rounded-xl border border-[#D3B9B9]">
-              <span className="flex items-center space-x-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#E4981E]" />
-                <span>Alumbrado</span>
-              </span>
-              <span className="flex items-center space-x-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#E28A85]" />
-                <span>Basural</span>
-              </span>
-              <span className="flex items-center space-x-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#588157]" />
-                <span>Espacio</span>
-              </span>
-            </div>
           </div>
         </div>
 
         {/* Encabezados de días de la semana */}
-        <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-500 py-2 border-y border-[#D3B9B9]/60">
+        <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-slate-500 py-2 border-y border-[#D3B9B9]/40">
           <span>Lun</span>
           <span>Mar</span>
           <span>Mié</span>
@@ -159,14 +211,14 @@ export function FaenasPlanner({
           <span className="text-[#d30684]">Dom</span>
         </div>
 
-        {/* Celdas del Calendario Mensual */}
+        {/* Celdas del Calendario Dinámico */}
         <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
           {calendarCells.map((cell) => {
             if (cell.empty) {
               return (
                 <div
                   key={cell.key}
-                  className="h-16 sm:h-20 rounded-2xl bg-slate-50/50 border border-transparent"
+                  className="h-16 sm:h-20 rounded-2xl bg-slate-50/40 border border-transparent"
                 />
               );
             }
@@ -175,7 +227,6 @@ export function FaenasPlanner({
             const faenasForDay = cell.faenas || [];
             const hasFaena = faenasForDay.length > 0;
             const isSelected = selectedDay === dayNum;
-            const isWeekend = (dayNum + startDayOffset) % 7 === 6 || (dayNum + startDayOffset) % 7 === 0;
 
             return (
               <div
@@ -185,20 +236,14 @@ export function FaenasPlanner({
                   isSelected
                     ? 'border-[#d30684] bg-[#fdf2f8] ring-2 ring-[#d30684]/30'
                     : hasFaena
-                    ? 'border-[#FDE68A] bg-[#FFFBEB]/70 hover:bg-[#FFFBEB]'
-                    : isWeekend
-                    ? 'border-slate-200 bg-[#FAF8F5]/60 hover:bg-[#FAF8F5]'
-                    : 'border-slate-100 bg-white hover:bg-slate-50'
+                    ? 'border-[#E4981E]/50 bg-[#FFFBEB] hover:bg-[#FFFBEB]/90'
+                    : 'border-slate-100 bg-white hover:bg-[#FAF8F5]'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span
                     className={`text-xs font-black ${
-                      hasFaena
-                        ? 'text-[#E4981E]'
-                        : isWeekend
-                        ? 'text-[#d30684]'
-                        : 'text-slate-700'
+                      hasFaena ? 'text-[#E4981E]' : 'text-slate-700'
                     }`}
                   >
                     {dayNum}
@@ -208,7 +253,6 @@ export function FaenasPlanner({
                   )}
                 </div>
 
-                {/* Event Pills en la celda */}
                 <div className="space-y-0.5 overflow-hidden">
                   {faenasForDay.slice(0, 2).map((f) => (
                     <div
@@ -232,26 +276,29 @@ export function FaenasPlanner({
         </div>
       </div>
 
-      {/* SECCIÓN 2: TARJETAS DE FAENAS CORRESPONDIENTES AL DÍA O MES */}
+      {/* 2. DETALLE DE TODAS LAS FAENAS ACTIVAS DEL MES:
+          HORA, LUGAR, ENCARGADO QUE LO APROBÓ, RESPONSABLE DE FAENA Y CONTACTO VECINAL (SIN DATOS PERSONALES) */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <GoogleIcon name="assignment" filled size={20} className="text-[#E4981E]" />
-            <h3 className="font-heading font-bold text-base text-[#1a2527]">
+            <GoogleIcon name="event_available" filled size={20} className="text-[#E4981E]" />
+            <h3 className="font-heading font-black text-base text-[#1a2527]">
               {selectedDay
-                ? `Faenas Programadas para el ${selectedDay} de Noviembre (${displayedFaenas.length})`
-                : `Todas las Faenas Activas de Noviembre (${displayedFaenas.length})`}
+                ? `Faenas Programadas para el ${selectedDay} de ${MONTH_NAMES[currentMonth]} (${displayedFaenas.length})`
+                : `Todas las Faenas Activas de ${MONTH_NAMES[currentMonth]} ${currentYear} (${displayedFaenas.length})`}
             </h3>
           </div>
-          <span className="text-xs text-slate-500">Listas para coordinación en territorio</span>
+          <span className="text-xs text-slate-500">Coordinación comunal de campo</span>
         </div>
 
         {displayedFaenas.length === 0 ? (
-          <div className="bg-white p-8 rounded-3xl border border-[#D3B9B9] text-center text-slate-400 space-y-2">
-            <GoogleIcon name="event_busy" size={36} className="text-slate-300 mx-auto" />
-            <p className="text-xs font-bold text-[#1a2527]">No hay faenas programadas para este día.</p>
+          <div className="bg-white p-10 rounded-3xl border border-[#D3B9B9]/50 text-center text-slate-400 space-y-2">
+            <GoogleIcon name="event_busy" size={40} className="text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-[#1a2527]">
+              No hay faenas programadas para los filtros o fecha seleccionada.
+            </p>
             <p className="text-[11px] text-slate-500">
-              Puedes seleccionar otra fecha del calendario o programar un caso de la lista inferior.
+              Puedes calendarizar una faena desde la Bandeja de Incidencias con el botón "Calendarizar Faena".
             </p>
           </div>
         ) : (
@@ -261,22 +308,22 @@ export function FaenasPlanner({
               return (
                 <div
                   key={report.id}
-                  className="bg-white p-5 rounded-3xl border border-[#D3B9B9] shadow-sm hover:border-[#E4981E] transition-all space-y-4 flex flex-col justify-between"
+                  className="bg-white p-5 rounded-3xl border border-[#D3B9B9]/50 shadow-sm hover:border-[#E4981E] transition-all space-y-4 flex flex-col justify-between"
                 >
                   <div className="space-y-3">
-                    {/* Cabecera de la Tarjeta */}
+                    {/* Encabezado: Código + Estado */}
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-black text-[#d30684] bg-[#fdf2f8] px-2 py-0.5 rounded-lg border border-[#d30684]/20">
+                      <span className="font-mono text-xs font-black text-[#d30684] bg-[#fdf2f8] px-2.5 py-0.5 rounded-lg border border-[#d30684]/20">
                         {report.ticket_code}
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-300">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#FFFBEB] text-[#E4981E] border border-[#E4981E]/30">
                         Faena Confirmada
                       </span>
                     </div>
 
-                    {/* Título y Eje */}
+                    {/* Problemática */}
                     <div>
-                      <h4 className="font-heading font-extrabold text-sm text-[#1a2527] line-clamp-2">
+                      <h4 className="font-heading font-black text-sm text-[#1a2527] line-clamp-2">
                         {report.ai_summary || report.description}
                       </h4>
                       <p className="text-xs text-slate-500 mt-1 line-clamp-1">
@@ -284,32 +331,52 @@ export function FaenasPlanner({
                       </p>
                     </div>
 
-                    {/* Datos de Campo: Coordinador, Fecha y Herramientas */}
-                    <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]/60 space-y-2 text-xs">
+                    {/* DETALLADO COMPLETO REQUERIDO (SIN DATOS PERSONALES):
+                        HORA, PUNTO DE ENCUENTRO, QUIEN APROBÓ, RESPONSABLE Y CONTACTO */}
+                    <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]/50 space-y-2 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="text-slate-500">Fecha y Hora:</span>
                         <span className="font-bold text-[#1a2527]">
-                          {ext.scheduled_date ? new Date(ext.scheduled_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Sábado 21 Nov, 08:30 AM'}
+                          {ext.scheduled_date
+                            ? new Date(ext.scheduled_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+                            : 'Sábado 21 Nov, 08:30 AM'}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between">
                         <span className="text-slate-500">Punto de Encuentro:</span>
                         <span className="font-bold text-slate-800 line-clamp-1 max-w-[200px]">
-                          {ext.meeting_point || 'Frente a la losa comunal'}
+                          {ext.meeting_point || 'Frente a la losa comunal del sector'}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Vecino Coordinador:</span>
+                        <span className="text-slate-500">Aprobado por:</span>
                         <span className="font-bold text-[#d30684]">
-                          {ext.coordinator_name || 'Comité de Vecinos'}
+                          Coordinación Territorial Hilando Voces (SJL)
                         </span>
                       </div>
 
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Encargado / Responsable:</span>
+                        <span className="font-bold text-[#588157]">
+                          Brigada Juvenil Comunal #4 · Lideresa de Campo
+                        </span>
+                      </div>
+
+                      {/* Contacto de la persona con la que se coordina (Sin datos personales) */}
+                      {report.coordinator_whatsapp && (
+                        <div className="flex items-center justify-between pt-1 border-t border-[#D3B9B9]/40">
+                          <span className="text-slate-500">Contacto de Coordinación:</span>
+                          <span className="font-mono font-bold text-slate-800">
+                            Vecino Coordinador (WhatsApp: {report.coordinator_whatsapp})
+                          </span>
+                        </div>
+                      )}
+
                       {ext.tools_available && ext.tools_available.length > 0 && (
                         <div className="pt-1 border-t border-[#D3B9B9]/40">
-                          <span className="text-[11px] text-slate-500 block">Herramientas comprometidas:</span>
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold">Herramientas comprometidas:</span>
                           <span className="text-[11px] font-semibold text-slate-700">
                             {ext.tools_available.join(', ')}
                           </span>
@@ -323,19 +390,19 @@ export function FaenasPlanner({
                     <button
                       type="button"
                       onClick={() => onOpenFaenaModal(report)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-[#FAF8F5]/80 border border-[#D3B9B9] text-xs font-bold text-[#1a2527] flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+                      className="flex-1 py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-[#fdf2f8] border border-[#D3B9B9] text-xs font-bold text-[#1a2527] flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
                     >
                       <GoogleIcon name="print" size={15} className="text-[#E4981E]" />
-                      <span>Ficha Técnica Imprimible</span>
+                      <span>Ficha Técnica Oficial</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => onOpenResolveModal(report)}
-                      className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all cursor-pointer"
+                      className="py-2 px-3 rounded-xl bg-[#588157] hover:bg-[#476b46] text-white text-xs font-bold flex items-center justify-center space-x-1 shadow-xs transition-all cursor-pointer"
                     >
                       <GoogleIcon name="task_alt" size={15} />
-                      <span>Resolver Caso</span>
+                      <span>Concluir Faena</span>
                     </button>
                   </div>
                 </div>
@@ -343,50 +410,6 @@ export function FaenasPlanner({
             })}
           </div>
         )}
-      </div>
-
-      {/* SECCIÓN 3: CASOS PRIORITARIOS LISTOS PARA PROGRAMAR FAENA */}
-      <div className="space-y-4 pt-4 border-t border-[#D3B9B9]/60">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <GoogleIcon name="pending_actions" filled size={20} className="text-[#d30684]" />
-            <h3 className="font-heading font-bold text-base text-[#1a2527]">
-              Casos Prioritarios Listos para Agendar Faena ({readyForFaena.length})
-            </h3>
-          </div>
-          <span className="text-xs text-slate-500">Evaluados por el Copiloto Gemini con prioridad alta</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {readyForFaena.map((report) => (
-            <div
-              key={report.id}
-              className="bg-white p-4 rounded-2xl border border-[#D3B9B9] hover:border-[#d30684] shadow-xs transition-all space-y-2 flex flex-col justify-between"
-            >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-mono font-black text-[#d30684]">{report.ticket_code}</span>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-red-50 text-red-700 border border-red-200">
-                    Prioridad Alta
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-slate-800 line-clamp-2">
-                  {report.ai_summary || report.description}
-                </p>
-                <span className="text-[11px] text-slate-500 block truncate">📍 {report.reference}</span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onOpenFaenaModal(report)}
-                className="w-full mt-2 py-1.5 rounded-xl bg-[#FAF8F5] hover:bg-[#d30684] hover:text-white border border-[#D3B9B9] text-xs font-bold text-[#1a2527] transition-all flex items-center justify-center space-x-1 cursor-pointer"
-              >
-                <GoogleIcon name="add_circle" size={14} />
-                <span>Agendar en Calendario</span>
-              </button>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

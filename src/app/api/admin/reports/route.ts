@@ -9,9 +9,9 @@ import { MOCK_REPORTS_25, ExtendedReport } from '@/data/mockReports';
  */
 export async function GET(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl?.searchParams || new URL(req.url).searchParams;
-    const axis = searchParams.get('axis');
-    const status = searchParams.get('status');
+    const url = new URL(req.url);
+    const axis = url.searchParams.get('axis');
+    const status = url.searchParams.get('status');
 
     let dbReports: any[] = [];
     try {

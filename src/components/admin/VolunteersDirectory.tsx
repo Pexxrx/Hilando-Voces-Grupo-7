@@ -9,53 +9,85 @@ interface VolunteersDirectoryProps {
   reports: Report[];
 }
 
+interface VolunteerItem {
+  id: string;
+  alias: string;
+  roleType: 'vecino' | 'voluntario' | 'coordinadora';
+  roleLabel: string;
+  phone: string;
+  sector: string;
+  tools: string[];
+  ticketCode?: string;
+}
+
 export function VolunteersDirectory({ reports }: VolunteersDirectoryProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sectorFilter, setSectorFilter] = useState('todos');
-  const [toolCategory, setToolCategory] = useState('todos');
+  const [roleTypeFilter, setRoleTypeFilter] = useState('todos');
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
 
-  // Filtrar reportes con vecino coordinador inscrito
-  const volunteers = reports.filter(
-    (r) => r.wants_to_coordinate && r.coordinator_whatsapp
-  );
+  // Modal para inscribir nuevo colaborador con apodo/alias
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newAlias, setNewAlias] = useState('');
+  const [newRoleType, setNewRoleType] = useState<'vecino' | 'voluntario' | 'coordinadora'>('voluntario');
+  const [newPhone, setNewPhone] = useState('');
+  const [newSector, setNewSector] = useState('Canto Grande');
+  const [newTools, setNewTools] = useState('');
 
-  const filtered = volunteers.filter((v) => {
-    const ext = v as ExtendedReport;
-    const ref = (v.reference || '').toLowerCase();
-    const toolsStr = (ext.tools_available || []).join(' ').toLowerCase();
+  // Voluntarios registrados localmente
+  const [customVolunteers, setCustomVolunteers] = useState<VolunteerItem[]>([]);
 
-    // Filtro por sector
-    if (sectorFilter !== 'todos') {
-      if (!ref.includes(sectorFilter.toLowerCase())) return false;
-    }
+  // Convertir los reportes con vecinos a formato anónimo estricto con alias comunales
+  const initialVolunteers: VolunteerItem[] = reports
+    .filter((r) => r.wants_to_coordinate && r.coordinator_whatsapp)
+    .map((v, idx) => {
+      const ext = v as ExtendedReport;
+      const sectorGuess = (v.reference || '').split(',')[0] || 'San Juan de Lurigancho';
 
-    // Filtro por categoría de herramientas
-    if (toolCategory === 'electricidad') {
-      if (!toolsStr.includes('escalera') && !toolsStr.includes('cable') && !toolsStr.includes('taladro') && !toolsStr.includes('multímetro') && !toolsStr.includes('dieléctric')) {
-        return false;
+      // Asignar apodo / alias comunitario protegiendo datos personales (Ley N° 29733)
+      let alias = `Colaborador SJL-${idx + 1}`;
+      let roleType: 'vecino' | 'voluntario' | 'coordinadora' = 'vecino';
+      let roleLabel = 'Vecino Coordinador';
+
+      if (idx % 3 === 0) {
+        alias = `Técnico Barrial #${idx + 10}`;
+        roleType = 'coordinadora';
+        roleLabel = 'Coordinadora de Faena';
+      } else if (idx % 2 === 0) {
+        alias = `Joven Brigadista #${idx + 5}`;
+        roleType = 'voluntario';
+        roleLabel = 'Joven Voluntario/a';
+      } else {
+        alias = `Vecino Vigilante #${idx + 1}`;
+        roleType = 'vecino';
+        roleLabel = 'Vecino(a) Colaborador(a)';
       }
-    } else if (toolCategory === 'limpieza') {
-      if (!toolsStr.includes('pala') && !toolsStr.includes('carretilla') && !toolsStr.includes('bolsa') && !toolsStr.includes('escobón') && !toolsStr.includes('rastrillo')) {
-        return false;
-      }
-    } else if (toolCategory === 'pintura') {
-      if (!toolsStr.includes('brocha') && !toolsStr.includes('rodillo') && !toolsStr.includes('pintura') && !toolsStr.includes('lija') && !toolsStr.includes('compresora')) {
-        return false;
-      }
-    }
 
-    // Búsqueda libre
+      return {
+        id: v.id,
+        alias,
+        roleType,
+        roleLabel,
+        phone: v.coordinator_whatsapp || '',
+        sector: sectorGuess,
+        tools: ext.tools_available || ['Mano de obra comunitaria y refrigerios'],
+        ticketCode: v.ticket_code,
+      };
+    });
+
+  const allVolunteers = [...customVolunteers, ...initialVolunteers];
+
+  const filtered = allVolunteers.filter((vol) => {
+    if (roleTypeFilter !== 'todos' && vol.roleType !== roleTypeFilter) return false;
+    if (sectorFilter !== 'todos' && !vol.sector.toLowerCase().includes(sectorFilter.toLowerCase())) return false;
+
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      const phoneMatch = (v.coordinator_whatsapp || '').includes(term);
-      const nameMatch = (ext.coordinator_name || '').toLowerCase().includes(term);
-      const roleMatch = (ext.volunteer_role || '').toLowerCase().includes(term);
-      const ticketMatch = v.ticket_code.toLowerCase().includes(term);
-      const refMatch = ref.includes(term);
-      if (!phoneMatch && !nameMatch && !roleMatch && !ticketMatch && !refMatch && !toolsStr.includes(term)) {
-        return false;
-      }
+      const aliasMatch = vol.alias.toLowerCase().includes(term);
+      const phoneMatch = vol.phone.includes(term);
+      const toolsMatch = vol.tools.join(' ').toLowerCase().includes(term);
+      const secMatch = vol.sector.toLowerCase().includes(term);
+      if (!aliasMatch && !phoneMatch && !toolsMatch && !secMatch) return false;
     }
 
     return true;
@@ -67,52 +99,70 @@ export function VolunteersDirectory({ reports }: VolunteersDirectoryProps) {
     setTimeout(() => setCopiedPhone(null), 2000);
   };
 
+  const handleRegisterVolunteer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAlias.trim() || !newPhone.trim()) return;
+
+    let roleLabel = 'Joven Voluntario/a';
+    if (newRoleType === 'vecino') roleLabel = 'Vecino(a) Colaborador(a)';
+    if (newRoleType === 'coordinadora') roleLabel = 'Coordinadora de Faena';
+
+    const toolsArr = newTools.trim()
+      ? newTools.split(',').map((t) => t.trim())
+      : ['Mano de obra para cuadrilla juvenil'];
+
+    const newVol: VolunteerItem = {
+      id: `custom-vol-${Date.now()}`,
+      alias: newAlias.trim(),
+      roleType: newRoleType,
+      roleLabel,
+      phone: newPhone.trim(),
+      sector: newSector,
+      tools: toolsArr,
+    };
+
+    setCustomVolunteers((prev) => [newVol, ...prev]);
+    setNewAlias('');
+    setNewPhone('');
+    setNewTools('');
+    setShowAddModal(false);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Banner Informativo y de Seguridad */}
-      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#D3B9B9] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* 1. CABECERA LIMPIA: ARTICULACIÓN VECINAL Y BOTÓN DE NUEVO VOLUNTARIO */}
+      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#D3B9B9]/50 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
-            <GoogleIcon name="groups" filled size={20} className="text-[#d30684]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-[#d30684]">
-              Articulación Ciudadana en SJL
+            <GoogleIcon name="groups" filled size={18} className="text-[#d30684]" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#d30684]">
+              Articulación y Fuerza Comunal
             </span>
           </div>
-          <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-[#1a2527] tracking-tight">
-            Red de Vecinos Coordinadores y Voluntarios
+          <h2 className="font-heading font-black text-2xl text-[#1a2527] tracking-tight">
+            Red de Colaboradores y Voluntarios
           </h2>
           <p className="text-xs text-slate-600 max-w-xl leading-relaxed">
-            Directorio territorial de ciudadanas y ciudadanos comprometidos con herramientas y mano de obra para las faenas barriales de San Juan de Lurigancho.
+            Directorio protegido bajo la Ley N° 29733: se usan <strong>apodos o alias comunitarios</strong> para resguardar la identidad vecinal y solo se mantiene el número de coordinación logística.
           </p>
         </div>
 
-        <div className="flex items-center space-x-3 bg-[#fdf2f8] border border-[#d30684]/30 p-3.5 rounded-2xl shrink-0">
-          <div className="text-center">
-            <span className="text-3xl font-heading font-black text-[#d30684] block leading-none">
-              {volunteers.length}
-            </span>
-            <span className="text-[10px] font-bold text-[#bd0474] uppercase tracking-wider">
-              Voluntarios Activos
-            </span>
-          </div>
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white text-xs font-bold flex items-center space-x-1.5 transition-all shadow-md shadow-[#d30684]/25 cursor-pointer"
+          >
+            <GoogleIcon name="person_add" size={16} />
+            <span>Inscribir Colaborador</span>
+          </button>
         </div>
       </div>
 
-      {/* Aviso de Confidencialidad y Ley 29733 */}
-      <div className="p-4 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] text-xs text-[#92400e] flex items-start space-x-3">
-        <GoogleIcon name="verified_user" filled size={18} className="text-[#E4981E] shrink-0 mt-0.5" />
-        <div className="space-y-0.5 leading-relaxed">
-          <span className="font-bold block">Uso estrictamente comunitario (Ley N° 29733):</span>
-          <span>
-            Los números telefónicos fueron compartidos voluntariamente por los ciudadanos únicamente para coordinar fechas y logística de faenas en su pasaje. Queda prohibido su uso para fines externos o no autorizados.
-          </span>
-        </div>
-      </div>
-
-      {/* BARRA DE FILTROS Y BÚSQUEDA */}
-      <div className="bg-white p-4 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-3">
+      {/* 2. BARRA DE FILTROS Y BÚSQUEDA */}
+      <div className="bg-white p-4 rounded-3xl border border-[#D3B9B9]/50 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* Input de Búsqueda */}
+          {/* Búsqueda */}
           <div className="relative flex-1">
             <GoogleIcon
               name="search"
@@ -123,71 +173,71 @@ export function VolunteersDirectory({ reports }: VolunteersDirectoryProps) {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar voluntario por nombre, herramientas, sector o teléfono..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs text-[#1a2527] placeholder:text-slate-400 focus:outline-none focus:border-[#d30684] focus:ring-1 focus:ring-[#d30684]"
+              placeholder="Buscar por apodo, herramientas o teléfono..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]/60 text-xs text-[#1a2527] placeholder:text-slate-400 focus:outline-none focus:border-[#d30684]"
             />
           </div>
 
-          {/* Filtro por Categoría de Herramientas */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {/* Filtro por Tipo de Rol */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
             <button
               type="button"
-              onClick={() => setToolCategory('todos')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                toolCategory === 'todos'
-                  ? 'bg-[#1a2527] text-white'
+              onClick={() => setRoleTypeFilter('todos')}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer ${
+                roleTypeFilter === 'todos'
+                  ? 'bg-[#1a2527] text-white shadow-xs'
                   : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200'
               }`}
             >
-              Todas las Herramientas
+              Todos ({allVolunteers.length})
             </button>
             <button
               type="button"
-              onClick={() => setToolCategory('electricidad')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                toolCategory === 'electricidad'
-                  ? 'bg-[#E4981E] text-white'
-                  : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200'
+              onClick={() => setRoleTypeFilter('voluntario')}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer ${
+                roleTypeFilter === 'voluntario'
+                  ? 'bg-[#d30684] text-white shadow-xs'
+                  : 'bg-[#FAF8F5] text-[#d30684] hover:bg-[#fdf2f8]'
               }`}
             >
-              ⚡ Electricidad y Escaleras
+              Jóvenes Voluntarios
             </button>
             <button
               type="button"
-              onClick={() => setToolCategory('limpieza')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                toolCategory === 'limpieza'
-                  ? 'bg-[#E28A85] text-white'
-                  : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200'
+              onClick={() => setRoleTypeFilter('vecino')}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer ${
+                roleTypeFilter === 'vecino'
+                  ? 'bg-[#E4981E] text-white shadow-xs'
+                  : 'bg-[#FAF8F5] text-[#E4981E] hover:bg-[#FFFBEB]'
               }`}
             >
-              🧹 Limpieza y Palas
+              Vecinos Colaboradores
             </button>
             <button
               type="button"
-              onClick={() => setToolCategory('pintura')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                toolCategory === 'pintura'
-                  ? 'bg-[#588157] text-white'
-                  : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200'
+              onClick={() => setRoleTypeFilter('coordinadora')}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer ${
+                roleTypeFilter === 'coordinadora'
+                  ? 'bg-[#588157] text-white shadow-xs'
+                  : 'bg-[#FAF8F5] text-[#588157] hover:bg-[#F0FDF4]'
               }`}
             >
-              🎨 Pintura y Lozas
+              Coordinadoras
             </button>
           </div>
         </div>
 
-        {/* Filtro rápido por sectores de SJL */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 border-t border-[#D3B9B9]/50 text-xs">
-          <span className="text-slate-400 font-bold shrink-0 text-[11px] mr-1">Sector SJL:</span>
-          {['todos', 'Canto Grande', 'Bayóvar', 'Campoy', 'Zárate', 'Cáceres', 'Huáscar', 'Jicamarca', 'Mangomarca'].map((sec) => (
+        {/* Sectores de SJL */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 border-t border-[#D3B9B9]/40 text-xs">
+          <span className="text-slate-400 font-bold text-[11px] mr-1">Sector:</span>
+          {['todos', 'Canto Grande', 'Bayóvar', 'Campoy', 'Zárate', 'Huáscar', 'Jicamarca'].map((sec) => (
             <button
               key={sec}
               type="button"
               onClick={() => setSectorFilter(sec)}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors shrink-0 cursor-pointer ${
                 sectorFilter === sec
-                  ? 'bg-[#d30684] text-white'
+                  ? 'bg-[#d30684] text-white shadow-xs'
                   : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -197,108 +247,232 @@ export function VolunteersDirectory({ reports }: VolunteersDirectoryProps) {
         </div>
       </div>
 
-      {/* GRID DE VOLUNTARIOS Y COORDINADORES */}
+      {/* 3. GRID DE TARJETAS DE COLABORADORES (ANÓNIMO, CON APODOS Y HERRAMIENTAS) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.length === 0 ? (
-          <div className="col-span-full bg-white p-10 rounded-3xl border border-[#D3B9B9] text-center text-slate-400 space-y-2">
+          <div className="col-span-full bg-white p-10 rounded-3xl border border-[#D3B9B9]/50 text-center text-slate-400 space-y-2">
             <GoogleIcon name="person_search" size={36} className="text-slate-300 mx-auto" />
-            <p className="text-xs font-bold text-[#1a2527]">No se encontraron voluntarios con esos criterios.</p>
-            <p className="text-[11px] text-slate-500">Prueba cambiando el sector o la categoría de herramientas.</p>
+            <p className="text-xs font-bold text-[#1a2527]">No se encontraron colaboradores con esos filtros.</p>
           </div>
         ) : (
-          filtered.map((vol) => {
-            const ext = vol as ExtendedReport;
-            const name = ext.coordinator_name || 'Vecino Voluntario';
-            const phone = vol.coordinator_whatsapp || '';
-            const role = ext.volunteer_role || 'Coordinador Barrial';
-
-            return (
-              <div
-                key={vol.id}
-                className="bg-white p-5 rounded-3xl border border-[#D3B9B9] hover:border-[#d30684] shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-              >
-                <div className="space-y-3">
-                  {/* Encabezado: Avatar + Nombre + Rol */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#d30684] to-[#1a2527] text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0">
-                        {name.slice(0, 1)}
-                      </div>
-                      <div>
-                        <h4 className="font-heading font-bold text-sm text-[#1a2527] line-clamp-1">
-                          {name}
-                        </h4>
-                        <span className="text-[11px] font-semibold text-[#d30684] block">
-                          {role}
-                        </span>
-                      </div>
+          filtered.map((vol) => (
+            <div
+              key={vol.id}
+              className="bg-white p-5 rounded-3xl border border-[#D3B9B9]/50 hover:border-[#d30684] shadow-sm transition-all flex flex-col justify-between space-y-3"
+            >
+              <div className="space-y-3">
+                {/* Encabezado: Apodo + Etiqueta de Rol */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <div className="w-10 h-10 rounded-2xl bg-[#fdf2f8] text-[#d30684] border border-[#d30684]/20 flex items-center justify-center font-black text-sm shrink-0">
+                      {vol.roleType === 'coordinadora' ? '⚡' : vol.roleType === 'voluntario' ? '🤝' : '🏠'}
                     </div>
-
-                    <span className="font-mono text-[10px] font-bold text-slate-400 bg-[#FAF8F5] px-1.5 py-0.5 rounded border border-[#D3B9B9]">
-                      {vol.ticket_code}
-                    </span>
-                  </div>
-
-                  {/* Ubicación y Referencia */}
-                  <div className="text-xs text-slate-600 space-y-0.5">
-                    <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-                      Ubicación de Referencia:
-                    </span>
-                    <p className="line-clamp-2 leading-relaxed font-medium">
-                      📍 {vol.reference}
-                    </p>
-                  </div>
-
-                  {/* Herramientas Disponibles */}
-                  <div className="space-y-1.5 pt-2 border-t border-[#D3B9B9]/50">
-                    <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">
-                      Herramientas Comprometidas:
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {(ext.tools_available || ['Mano de obra comunitaria']).map((tool, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-0.5 rounded-md bg-[#FAF8F5] border border-[#D3B9B9] text-[10px] font-semibold text-slate-700"
-                        >
-                          🛠️ {tool}
-                        </span>
-                      ))}
+                    <div className="min-w-0">
+                      <h4 className="font-heading font-black text-sm text-[#1a2527] truncate">
+                        {vol.alias}
+                      </h4>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.2 rounded-full inline-block mt-0.5 ${
+                          vol.roleType === 'coordinadora'
+                            ? 'bg-[#F0FDF4] text-[#588157] border border-[#588157]/30'
+                            : vol.roleType === 'voluntario'
+                            ? 'bg-[#fdf2f8] text-[#d30684] border border-[#d30684]/30'
+                            : 'bg-[#FFFBEB] text-[#E4981E] border border-[#E4981E]/30'
+                        }`}
+                      >
+                        {vol.roleLabel}
+                      </span>
                     </div>
                   </div>
+
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    📍 SJL
+                  </span>
                 </div>
 
-                {/* Acciones de Contacto Comunitario */}
-                <div className="pt-3 border-t border-[#D3B9B9]/60 flex items-center gap-2">
-                  <a
-                    href={`https://wa.me/51${phone}?text=${encodeURIComponent(
-                      `Hola ${name}, te saludamos de la coordinación comunitaria de Hilando Voces respecto a tu reporte ${vol.ticket_code}.`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center space-x-1.5 shadow-sm transition-all cursor-pointer"
-                  >
-                    <GoogleIcon name="chat" size={15} />
-                    <span>WhatsApp</span>
-                  </a>
+                {/* Sector Territorial */}
+                <div className="text-xs text-slate-600 space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Sector Asignado:
+                  </span>
+                  <p className="line-clamp-1 font-medium text-slate-800">
+                    {vol.sector}
+                  </p>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleCopyPhone(phone)}
-                    className="py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-slate-200 border border-[#D3B9B9] text-xs font-bold text-slate-700 transition-colors cursor-pointer shrink-0"
-                    title="Copiar teléfono"
-                  >
-                    {copiedPhone === phone ? (
-                      <span className="text-emerald-600 text-[11px] font-bold">¡Copiado!</span>
-                    ) : (
-                      <GoogleIcon name="content_copy" size={15} />
-                    )}
-                  </button>
+                {/* Herramientas y Compromiso */}
+                <div className="space-y-1 pt-1 border-t border-[#D3B9B9]/40">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Herramientas y Aporte Comprometido:
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {vol.tools.map((t, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-0.5 rounded-lg bg-[#FAF8F5] border border-[#D3B9B9]/50 text-[10px] font-semibold text-slate-700"
+                      >
+                        🛠️ {t}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            );
-          })
+
+              {/* Botón de Coordinación Directa por WhatsApp */}
+              <div className="pt-2 border-t border-[#D3B9B9]/50 flex items-center gap-2">
+                <a
+                  href={`https://wa.me/51${vol.phone}?text=${encodeURIComponent(
+                    `Hola ${vol.alias}, te saludamos desde la coordinación comunitaria de Hilando Voces para coordinar la faena barrial.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[#588157] hover:bg-[#476b46] text-white text-xs font-bold flex items-center justify-center space-x-1.5 shadow-xs transition-all cursor-pointer"
+                >
+                  <GoogleIcon name="chat" size={15} />
+                  <span>WhatsApp ({vol.phone})</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => handleCopyPhone(vol.phone)}
+                  className="py-2 px-3 rounded-xl bg-[#FAF8F5] hover:bg-slate-200 border border-[#D3B9B9] text-xs font-bold text-slate-700 transition-colors cursor-pointer shrink-0"
+                  title="Copiar teléfono"
+                >
+                  {copiedPhone === vol.phone ? (
+                    <span className="text-[#588157] text-[10px] font-black">¡Copiado!</span>
+                  ) : (
+                    <GoogleIcon name="content_copy" size={15} />
+                  )}
+                </button>
+              </div>
+            </div>
+          ))
         )}
       </div>
+
+      {/* 4. MODAL PARA INSCRIBIR NUEVO COLABORADOR / VOLUNTARIO (CON APODOS) */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-[#D3B9B9] space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#D3B9B9]/50 pb-3">
+              <div className="flex items-center space-x-2">
+                <GoogleIcon name="person_add" filled size={20} className="text-[#d30684]" />
+                <h3 className="font-heading font-black text-base text-[#1a2527]">
+                  Inscribir Nuevo Colaborador
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1"
+              >
+                <GoogleIcon name="close" size={20} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Para proteger los datos personales (Ley N° 29733), asigna un <strong>apodo o alias</strong> con el que el voluntario o vecino desee ser identificado en la cuadrilla.
+            </p>
+
+            <form onSubmit={handleRegisterVolunteer} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  Tipo de Colaborador:
+                </label>
+                <select
+                  value={newRoleType}
+                  onChange={(e) => setNewRoleType(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs font-bold text-slate-800"
+                >
+                  <option value="voluntario">Joven Voluntario/a</option>
+                  <option value="vecino">Vecino(a) Colaborador(a)</option>
+                  <option value="coordinadora">Coordinadora de Faena</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  Apodo o Alias Comunal:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newAlias}
+                  onChange={(e) => setNewAlias(e.target.value)}
+                  placeholder="Ejemplo: 'Técnico Bayóvar', 'Águila Canto Grande'"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs text-slate-800 focus:outline-none focus:border-[#d30684]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    WhatsApp (9 dígitos):
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={9}
+                    pattern="[0-9]{9}"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="987654321"
+                    className="w-full px-3.5 py-2 rounded-xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs font-mono text-slate-800 focus:outline-none focus:border-[#d30684]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    Sector de SJL:
+                  </label>
+                  <select
+                    value={newSector}
+                    onChange={(e) => setNewSector(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs text-slate-800"
+                  >
+                    <option value="Canto Grande">Canto Grande</option>
+                    <option value="Campoy">Campoy</option>
+                    <option value="Zárate">Zárate</option>
+                    <option value="Huáscar">Huáscar</option>
+                    <option value="Bayóvar">Bayóvar</option>
+                    <option value="Mariscal Cáceres">Mariscal Cáceres</option>
+                    <option value="Jicamarca">Jicamarca</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  Herramientas y Compromiso (separadas por coma):
+                </label>
+                <input
+                  type="text"
+                  value={newTools}
+                  onChange={(e) => setNewTools(e.target.value)}
+                  placeholder="Ej: Escalera de 6m, 2 palas, carretilla"
+                  className="w-full px-3.5 py-2 rounded-xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs text-slate-800 focus:outline-none focus:border-[#d30684]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[#D3B9B9]/50">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white text-xs font-bold shadow-sm"
+                >
+                  Registrar Colaborador
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

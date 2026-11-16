@@ -17,39 +17,44 @@ export function AdminHeader({
   refreshing,
   totalAlerts = 0,
 }: AdminHeaderProps) {
-  const { profile, activeTab, switchRole } = useAdminSession();
+  const { profile, activeTab } = useAdminSession();
 
   const getSectionTitle = () => {
     switch (activeTab) {
       case 'incidencias':
         return {
-          title: 'Bandeja de Incidencias y Triaje',
-          subtitle: 'Clasificación asistida por Gemini IA y atención de tickets vecinales',
+          title: 'Bandeja de Incidencias',
+          subtitle: 'Expedientes ciudadanos y triaje de campo sin datos personales',
         };
       case 'faenas':
         return {
           title: 'Planificador de Faenas Barriales',
-          subtitle: 'Agenda comunitaria, materiales requeridos y fichas técnicas imprimibles',
+          subtitle: 'Agenda comunitaria mensual, responsables y fichas técnicas',
+        };
+      case 'ahp':
+        return {
+          title: 'Priorización Multicriterio AHP',
+          subtitle: 'Modelo científico de Saaty para ranking objetivo en San Juan de Lurigancho',
         };
       case 'voluntarios':
         return {
           title: 'Red de Voluntarios y Coordinación',
-          subtitle: 'Vecinas y vecinos dispuestos a apoyar en faenas con enlace directo a WhatsApp',
+          subtitle: 'Padrón de vecinos y brigadistas con alias comunitarios y herramientas',
         };
       case 'rendicion':
         return {
-          title: 'Rendición de Cuentas y Evidencias',
-          subtitle: 'Carga de fotografías del "Después" para cerrar expedientes y certificar obras',
+          title: 'Rendición de Cuentas Social',
+          subtitle: 'Bitácora pública de transformaciones comunitarias (Antes y Después)',
         };
       case 'equipo':
         return {
-          title: 'Equipo de Lideresas y Permisos',
-          subtitle: 'Padrón de lideresas barriales de San Juan de Lurigancho y matriz de roles',
+          title: 'Equipo de Lideresas y Gobernanza',
+          subtitle: 'Estructura organizativa y matriz formal de roles y permisos',
         };
       default:
         return {
           title: 'Centro de Mando Territorial',
-          subtitle: 'Monitoreo barrial en tiempo real para San Juan de Lurigancho (SJL)',
+          subtitle: 'Monitoreo barrial geocercado para San Juan de Lurigancho (SJL)',
         };
     }
   };
@@ -57,42 +62,43 @@ export function AdminHeader({
   const { title, subtitle } = getSectionTitle();
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#D3B9B9] px-4 sm:px-6 py-3.5 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        {/* Lado izquierdo: Botón Menú Móvil + Título */}
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#D3B9B9]/50 px-4 sm:px-6 py-3 shadow-xs">
+      <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto w-full">
+        {/* Lado izquierdo: Botón Menú Siempre Disponible + Título de Sección */}
         <div className="flex items-center space-x-3">
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="lg:hidden p-2 rounded-xl text-slate-700 hover:text-[#d30684] hover:bg-[#FAF8F5] border border-[#D3B9B9] cursor-pointer"
-            title="Abrir menú"
+            className="px-3.5 py-2 rounded-2xl text-slate-800 hover:text-[#d30684] hover:bg-[#FAF8F5] border border-[#D3B9B9] flex items-center space-x-2 transition-all cursor-pointer shadow-xs group"
+            title="Abrir menú de módulos"
           >
-            <GoogleIcon name="menu" size={20} />
+            <GoogleIcon name="menu" size={20} className="text-[#d30684] group-hover:scale-110 transition-transform" />
+            <span className="font-heading font-black text-xs text-[#1a2527]">Menú</span>
           </button>
 
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="font-heading font-extrabold text-lg sm:text-xl text-[#1a2527] tracking-tight">
+              <h1 className="font-heading font-black text-base sm:text-lg text-[#1a2527] tracking-tight">
                 {title}
               </h1>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#fdf2f8] text-[#d30684] border border-[#d30684]/30">
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#FAF8F5] text-[#d30684] border border-[#d30684]/20">
                 SJL · Grupo 7
               </span>
             </div>
-            <p className="text-xs text-slate-500 hidden sm:block">
+            <p className="text-[11px] text-slate-500 hidden sm:block truncate max-w-md">
               {subtitle}
             </p>
           </div>
         </div>
 
-        {/* Lado derecho: Acciones Rápidas */}
+        {/* Lado derecho: Acciones y Perfil */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Botón Refrescar Datos */}
           <button
             type="button"
             onClick={onRefresh}
             disabled={refreshing}
-            className="p-2 sm:px-3 sm:py-2 rounded-xl border border-[#D3B9B9] hover:border-[#d30684] hover:bg-[#FAF8F5] text-xs font-bold text-[#1a2527] flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
+            className="p-2 sm:px-3 sm:py-2 rounded-2xl border border-[#D3B9B9] hover:border-[#d30684] hover:bg-[#FAF8F5] text-xs font-bold text-[#1a2527] flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
             title="Actualizar datos"
           >
             <GoogleIcon
@@ -104,15 +110,15 @@ export function AdminHeader({
           </button>
 
           {/* Insignia del Rol con Avatar */}
-          <div className="flex items-center space-x-2 bg-[#FAF8F5] border border-[#D3B9B9] px-3 py-1.5 rounded-2xl">
-            <div className="w-6 h-6 rounded-lg bg-[#d30684] text-white flex items-center justify-center text-[10px] font-black">
+          <div className="flex items-center space-x-2 bg-[#FAF8F5] border border-[#D3B9B9]/70 px-3 py-1.5 rounded-2xl">
+            <div className="w-6 h-6 rounded-xl bg-[#d30684] text-white flex items-center justify-center text-[10px] font-black">
               {profile?.avatarInitials || 'L'}
             </div>
-            <div className="hidden md:block text-left leading-tight">
-              <span className="text-xs font-bold text-[#1a2527] block">
+            <div className="text-left hidden md:block">
+              <span className="text-xs font-bold text-[#1a2527] block leading-tight">
                 {profile?.name.split(' ')[0]}
               </span>
-              <span className="text-[10px] font-semibold text-[#d30684] block">
+              <span className="text-[10px] text-[#d30684] font-semibold block leading-tight">
                 {profile?.roleTitle}
               </span>
             </div>

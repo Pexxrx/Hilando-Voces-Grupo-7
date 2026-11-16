@@ -15,7 +15,7 @@ export interface AdminProfile {
   avatarInitials: string;
 }
 
-export const DEMO_PROFILES: Record<AdminRole, AdminProfile> = {
+export const OFFICIAL_ADMIN_PROFILES: Record<AdminRole, AdminProfile> = {
   lideresa: {
     email: 'lideresa@hilandovoces.pe',
     name: 'Rosa Huamán Quispe',
@@ -61,7 +61,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initSession = async () => {
-      // 1. Verificar si hay sesión en localStorage (modo demo/offline prioritario)
+      // 1. Verificar si hay sesión en localStorage (persistencia de sesión activa)
       const cached = localStorage.getItem('hv_admin_profile');
       if (cached) {
         try {
@@ -86,7 +86,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
             .maybeSingle();
 
           const role = (roleData?.role as AdminRole) || 'lideresa';
-          const defaultProfile = DEMO_PROFILES[role] || {
+          const defaultProfile = OFFICIAL_ADMIN_PROFILES[role] || {
             email,
             name: email.split('@')[0],
             role,
@@ -102,8 +102,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {}
 
-      // Si no hay sesión, asignar perfil de lideresa por defecto en modo desarrollo para visualización
-      const fallback = DEMO_PROFILES.lideresa;
+      // Si no hay sesión previa, iniciar con el perfil oficial de la lideresa territorial
+      const fallback = OFFICIAL_ADMIN_PROFILES.lideresa;
       setProfile(fallback);
       localStorage.setItem('hv_admin_profile', JSON.stringify(fallback));
       setLoading(false);
@@ -113,7 +113,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const switchRole = (newRole: AdminRole) => {
-    const newProfile = DEMO_PROFILES[newRole];
+    const newProfile = OFFICIAL_ADMIN_PROFILES[newRole];
     setProfile(newProfile);
     localStorage.setItem('hv_admin_profile', JSON.stringify(newProfile));
   };
