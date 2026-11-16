@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -42,13 +42,15 @@ export const OFFICIAL_ADMIN_PROFILES: Record<AdminRole, AdminProfile> = {
   },
 };
 
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos de inactividad
+
 interface AdminContextType {
   profile: AdminProfile | null;
   loading: boolean;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   switchRole: (role: AdminRole) => void;
-  signOut: () => Promise<void>;
+  signOut: (reason?: string) => Promise<void>;
   checkSession: () => boolean;
 }
 
@@ -60,7 +62,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('resumen');
 
-  const checkSession = () => {
+  const checkSession = useCallback(() => {
     const cached = localStorage.getItem('hv_admin_profile');
     if (!cached) {
       if (profile !== null) setProfile(null);
@@ -74,14 +76,38 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (e) {
       localStorage.removeItem('hv_admin_profile');
+      sessionStorage.clear();
       setProfile(null);
       return false;
     }
-  };
+  }, [profile]);
+
+  const signOut = useCallback(
+    async (reason?: string) => {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
+      localStorage.removeItem('hv_admin_profile');
+      sessionStorage.clear();
+      setProfile(null);
+      const target = reason === 'inactivity' ? '/admin/login?reason=inactivity' : '/admin/login';
+      router.replace(target);
+    },
+    [router]
+  );
 
   useEffect(() => {
     const initSession = async () => {
-      // 1. Verificar si hay sesión activa en localStorage
+      // 1. Si estamos en la pantalla de login, forzar cierre de credenciales
+      if (typeof window !== 'undefined' && window.location.pathname === '/admin/login') {
+        localStorage.removeItem('hv_admin_profile');
+        sessionStorage.clear();
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Verificar si hay sesión activa en localStorage
       const cached = localStorage.getItem('hv_admin_profile');
       if (cached) {
         try {
@@ -94,7 +120,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 2. Verificar sesión de Supabase Auth
+      // 3. Verificar sesión de Supabase Auth
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData.session) {
@@ -130,36 +156,103 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
     initSession();
 
-    // Detección cuando el usuario vuelve con el botón "Atrás" del navegador
+    // Detección estricta de navegación Atrás / Adelante (Back / Forward cache & History traversal)
     const handlePageShow = (event: PageTransitionEvent) => {
+      let isBackForward = event.persisted;
+      if (!isBackForward && typeof performance !== 'undefined') {
+        const navEntries = performance.getEntriesByType('navigation');
+        if (navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === 'back_forward') {
+          isBackForward = true;
+        }
+      }
+
+      // Si el usuario navegó usando los botones Atrás / Adelante del navegador
+      if (isBackForward) {
+        localStorage.removeItem('hv_admin_profile');
+        sessionStorage.clear();
+        setProfile(null);
+        if (window.location.pathname.startsWith('/admin')) {
+          router.replace('/admin/login');
+        }
+        return;
+      }
+
       const hasSession = checkSession();
       if (!hasSession && window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin/login') {
         router.replace('/admin/login');
       }
     };
 
+    // Evento popstate: se activa inmediatamente cuando el usuario presiona "Atrás" o "Adelante"
+    const handlePopState = () => {
+      localStorage.removeItem('hv_admin_profile');
+      sessionStorage.clear();
+      setProfile(null);
+      router.replace('/admin/login');
+    };
+
     window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('storage', () => checkSession());
 
     return () => {
       window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('popstate', handlePopState);
     };
-  }, [router]);
+  }, [router, checkSession]);
+
+  // Monitor de Inactividad de 5 Minutos (Cierre automático si no hay movimiento)
+  useEffect(() => {
+    if (!profile) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      sessionStorage.setItem('hv_last_activity', Date.now().toString());
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        signOut('inactivity');
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    let lastUpdate = 0;
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - lastUpdate > 1000) { // Throttle a 1 segundo para no recargar CPU
+        lastUpdate = now;
+        resetTimer();
+      }
+    };
+
+    events.forEach((evt) => {
+      window.addEventListener(evt, onActivity, { passive: true });
+    });
+
+    // Iniciar temporizador
+    resetTimer();
+
+    // Verificación de respaldo periódica cada 10s (útil si la pestaña estuvo minimizada)
+    const intervalId = setInterval(() => {
+      const last = Number(sessionStorage.getItem('hv_last_activity') || Date.now());
+      if (Date.now() - last >= INACTIVITY_TIMEOUT_MS) {
+        signOut('inactivity');
+      }
+    }, 10000);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+      events.forEach((evt) => {
+        window.removeEventListener(evt, onActivity);
+      });
+    };
+  }, [profile, signOut]);
 
   const switchRole = (newRole: AdminRole) => {
     const newProfile = OFFICIAL_ADMIN_PROFILES[newRole];
     setProfile(newProfile);
     localStorage.setItem('hv_admin_profile', JSON.stringify(newProfile));
-  };
-
-  const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {}
-    localStorage.removeItem('hv_admin_profile');
-    sessionStorage.clear();
-    setProfile(null);
-    router.replace('/admin/login');
   };
 
   return (

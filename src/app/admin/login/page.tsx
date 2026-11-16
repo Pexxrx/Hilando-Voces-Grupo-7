@@ -21,14 +21,20 @@ export default function AdminLoginPage() {
   // Control de ciberseguridad: Prevención de fuerza bruta (Rate limiting del lado cliente)
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState(0);
+  const [isInactiveLogout, setIsInactiveLogout] = useState(false);
 
-  // Redirección si ya cuenta con sesión verificada en este navegador
+  // Invalida cualquier sesión previa al llegar a la pantalla de login (anti-bypass de historial)
   useEffect(() => {
-    const cached = localStorage.getItem('hv_admin_profile');
-    if (cached) {
-      router.replace('/admin/centro-mando');
+    localStorage.removeItem('hv_admin_profile');
+    sessionStorage.clear();
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reason') === 'inactivity') {
+        setIsInactiveLogout(true);
+      }
     }
-  }, [router]);
+  }, []);
 
   // Temporizador de bloqueo tras intentos fallidos
   useEffect(() => {
@@ -170,6 +176,16 @@ export default function AdminLoginPage() {
             <GoogleIcon name="verified_user" filled size={18} className="text-[#d30684] shrink-0" />
             <span>Acceso Seguro con Control de Roles (RBAC)</span>
           </div>
+
+          {isInactiveLogout && (
+            <div className="p-3.5 rounded-2xl bg-[#fff7ed] border border-[#E4981E]/40 text-[#c2410c] text-xs flex items-start space-x-2 animate-in fade-in">
+              <GoogleIcon name="timer" filled size={18} className="text-[#E4981E] shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block">Sesión cerrada por inactividad</span>
+                <span className="text-[11px] leading-tight">Por motivos de seguridad, tu sesión se cerró tras 5 minutos sin actividad. Ingresa nuevamente.</span>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="p-3.5 rounded-2xl bg-[#F3E8E8] border border-[#d30684]/40 text-[#8c472f] text-xs flex items-start space-x-2">

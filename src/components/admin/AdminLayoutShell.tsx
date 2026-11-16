@@ -40,14 +40,13 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   // Manejo de eventos de navegación por historial / retroceso del navegador (bfcache)
   useEffect(() => {
     const handlePopState = () => {
-      const active = checkSession();
-      if (!active) {
-        router.replace('/admin/login');
-      }
+      localStorage.removeItem('hv_admin_profile');
+      sessionStorage.clear();
+      router.replace('/admin/login');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [checkSession, router]);
+  }, [router]);
 
   // Subir foto "Después" para resolver caso
   const handlePhotoUploadResolve = (e: React.ChangeEvent<HTMLInputElement>) => {

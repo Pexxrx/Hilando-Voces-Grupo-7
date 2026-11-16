@@ -199,7 +199,7 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
         <div className="p-4 border-t border-[#D3B9B9]/60">
           <button
             type="button"
-            onClick={signOut}
+            onClick={() => signOut()}
             className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl text-xs font-bold text-slate-600 hover:text-red-700 hover:bg-red-50 border border-[#D3B9B9]/60 transition-colors cursor-pointer"
           >
             <GoogleIcon name="logout" size={16} />
