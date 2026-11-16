@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Report, ReportStatus } from '@/types';
 import { useRouter } from 'next/navigation';
+import { useAdminSession } from './AdminSessionContext';
 
 interface AdminDataContextType {
   reports: Report[];
@@ -22,6 +23,8 @@ const AdminDataContext = createContext<AdminDataContextType | undefined>(undefin
 
 export function AdminDataProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { profile, loading: sessionLoading } = useAdminSession();
+
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -32,6 +35,10 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
   const [activeResolveReport, setActiveResolveReport] = useState<Report | null>(null);
 
   const fetchReports = useCallback(async () => {
+    if (!profile) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch('/api/admin/reports');
       const data = await res.json();
@@ -47,18 +54,26 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedReport]);
+  }, [profile, selectedReport]);
 
   useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+    if (profile) {
+      fetchReports();
+    } else if (!sessionLoading) {
+      setReports([]);
+      setLoading(false);
+    }
+  }, [profile, sessionLoading, fetchReports]);
 
   const refreshReports = async () => {
+    if (!profile) return;
     setRefreshing(true);
     await fetchReports();
   };
 
   const handleUpdateStatus = async (reportId: string, status: ReportStatus) => {
+    if (!profile) return;
+
     setReports((prev) =>
       prev.map((r) =>
         r.id === reportId

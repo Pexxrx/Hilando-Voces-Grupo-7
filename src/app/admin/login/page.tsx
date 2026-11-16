@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { supabase } from '@/lib/supabaseClient';
-import { OFFICIAL_ADMIN_PROFILES, AdminRole } from '@/components/admin/AdminSessionContext';
+import { OFFICIAL_ADMIN_PROFILES, AdminRole, useAdminSession } from '@/components/admin/AdminSessionContext';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_SECONDS = 60;
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { checkSession } = useAdminSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,11 +22,11 @@ export default function AdminLoginPage() {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTime, setLockoutTime] = useState(0);
 
-  // Redirección si ya cuenta con sesión verificada
+  // Redirección si ya cuenta con sesión verificada en este navegador
   useEffect(() => {
     const cached = localStorage.getItem('hv_admin_profile');
     if (cached) {
-      router.push('/admin/centro-mando');
+      router.replace('/admin/centro-mando');
     }
   }, [router]);
 
@@ -88,8 +89,9 @@ export default function AdminLoginPage() {
         if (matchedRole && cleanPassword.length >= 6) {
           const profile = OFFICIAL_ADMIN_PROFILES[matchedRole];
           localStorage.setItem('hv_admin_profile', JSON.stringify(profile));
+          checkSession();
           setFailedAttempts(0);
-          router.push('/admin/centro-mando');
+          router.replace('/admin/centro-mando');
           return;
         }
 
@@ -129,8 +131,9 @@ export default function AdminLoginPage() {
         };
 
         localStorage.setItem('hv_admin_profile', JSON.stringify(profile));
+        checkSession();
         setFailedAttempts(0);
-        router.push('/admin/centro-mando');
+        router.replace('/admin/centro-mando');
       }
     } catch (err: any) {
       setError('Ocurrió un error al procesar la autenticación segura.');

@@ -17,7 +17,7 @@ export interface AdminProfile {
 
 export const OFFICIAL_ADMIN_PROFILES: Record<AdminRole, AdminProfile> = {
   lideresa: {
-    email: 'lideresa@hilandovoces.pe',
+    email: 'lideresa.canto@hilandovoces.pe',
     name: 'Rosa Huamán Quispe',
     role: 'lideresa',
     roleTitle: 'Lideresa Territorial SJL',
@@ -25,7 +25,7 @@ export const OFFICIAL_ADMIN_PROFILES: Record<AdminRole, AdminProfile> = {
     avatarInitials: 'RH',
   },
   coordinadora: {
-    email: 'coordinadora@hilandovoces.pe',
+    email: 'coordinadora.bayovar@hilandovoces.pe',
     name: 'Valeria Mendoza Paucar',
     role: 'coordinadora',
     roleTitle: 'Coordinadora de Faena Barrial',
@@ -33,7 +33,7 @@ export const OFFICIAL_ADMIN_PROFILES: Record<AdminRole, AdminProfile> = {
     avatarInitials: 'VM',
   },
   superadmin: {
-    email: 'supervisora@hilandovoces.pe',
+    email: 'supervisora.distrital@hilandovoces.pe',
     name: 'Ing. Carmen Ramos Alarcón',
     role: 'superadmin',
     roleTitle: 'Supervisora Comunal Distrital',
@@ -49,6 +49,7 @@ interface AdminContextType {
   setActiveTab: (tab: string) => void;
   switchRole: (role: AdminRole) => void;
   signOut: () => Promise<void>;
+  checkSession: () => boolean;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -59,9 +60,28 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('resumen');
 
+  const checkSession = () => {
+    const cached = localStorage.getItem('hv_admin_profile');
+    if (!cached) {
+      if (profile !== null) setProfile(null);
+      return false;
+    }
+    try {
+      const parsed = JSON.parse(cached) as AdminProfile;
+      if (!profile || profile.email !== parsed.email) {
+        setProfile(parsed);
+      }
+      return true;
+    } catch (e) {
+      localStorage.removeItem('hv_admin_profile');
+      setProfile(null);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const initSession = async () => {
-      // 1. Verificar si hay sesión en localStorage (persistencia de sesión activa)
+      // 1. Verificar si hay sesión activa en localStorage
       const cached = localStorage.getItem('hv_admin_profile');
       if (cached) {
         try {
@@ -69,7 +89,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
           setProfile(parsed);
           setLoading(false);
           return;
-        } catch (e) {}
+        } catch (e) {
+          localStorage.removeItem('hv_admin_profile');
+        }
       }
 
       // 2. Verificar sesión de Supabase Auth
@@ -78,7 +100,6 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         if (sessionData.session) {
           const email = sessionData.session.user.email || '';
           
-          // Consultar rol en la base de datos
           const { data: roleData } = await supabase
             .from('user_roles')
             .select('role')
@@ -86,7 +107,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
             .maybeSingle();
 
           const role = (roleData?.role as AdminRole) || 'lideresa';
-          const defaultProfile = OFFICIAL_ADMIN_PROFILES[role] || {
+          const userProfile = OFFICIAL_ADMIN_PROFILES[role] || {
             email,
             name: email.split('@')[0],
             role,
@@ -95,22 +116,35 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
             avatarInitials: email.slice(0, 2).toUpperCase(),
           };
 
-          setProfile(defaultProfile);
-          localStorage.setItem('hv_admin_profile', JSON.stringify(defaultProfile));
+          setProfile(userProfile);
+          localStorage.setItem('hv_admin_profile', JSON.stringify(userProfile));
           setLoading(false);
           return;
         }
       } catch (err) {}
 
-      // Si no hay sesión previa, iniciar con el perfil oficial de la lideresa territorial
-      const fallback = OFFICIAL_ADMIN_PROFILES.lideresa;
-      setProfile(fallback);
-      localStorage.setItem('hv_admin_profile', JSON.stringify(fallback));
+      // Si no hay sesión previa, mantener perfil como null (acceso NO autenticado)
+      setProfile(null);
       setLoading(false);
     };
 
     initSession();
-  }, []);
+
+    // Detección cuando el usuario vuelve con el botón "Atrás" del navegador
+    const handlePageShow = (event: PageTransitionEvent) => {
+      const hasSession = checkSession();
+      if (!hasSession && window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin/login') {
+        router.replace('/admin/login');
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('storage', () => checkSession());
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [router]);
 
   const switchRole = (newRole: AdminRole) => {
     const newProfile = OFFICIAL_ADMIN_PROFILES[newRole];
@@ -123,8 +157,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
     } catch (e) {}
     localStorage.removeItem('hv_admin_profile');
+    sessionStorage.clear();
     setProfile(null);
-    router.push('/admin/login');
+    router.replace('/admin/login');
   };
 
   return (
@@ -136,6 +171,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         setActiveTab,
         switchRole,
         signOut,
+        checkSession,
       }}
     >
       {children}

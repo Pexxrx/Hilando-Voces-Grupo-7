@@ -1,20 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { WarmichaChatbot } from './WarmichaChatbot';
 import { useAdminData } from './AdminDataContext';
+import { useAdminSession } from './AdminSessionContext';
 import { FaenaSheetModal } from '@/components/FaenaSheetModal';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { Report } from '@/types';
 
 export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const router = useRouter();
+  const { profile, loading: sessionLoading, checkSession } = useAdminSession();
+
   const {
     reports,
-    loading,
+    loading: dataLoading,
     refreshing,
     refreshReports,
     pendingCount,
@@ -26,6 +29,25 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
   const [activeResolveReport, setActiveResolveReport] = useState<Report | null>(null);
   const [resolvePhoto, setResolvePhoto] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+
+  // ROUTE GUARD DE CIBERSEGURIDAD: Si no hay perfil autenticado, redirigir inmediatamente a /admin/login
+  useEffect(() => {
+    if (!sessionLoading && !profile) {
+      router.replace('/admin/login');
+    }
+  }, [sessionLoading, profile, router]);
+
+  // Manejo de eventos de navegación por historial / retroceso del navegador (bfcache)
+  useEffect(() => {
+    const handlePopState = () => {
+      const active = checkSession();
+      if (!active) {
+        router.replace('/admin/login');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [checkSession, router]);
 
   // Subir foto "Después" para resolver caso
   const handlePhotoUploadResolve = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +93,35 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (loading) {
+  // Bloqueo visual durante la verificación de credenciales
+  if (sessionLoading) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center text-[#d30684] p-4">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-[#d30684] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-bold text-slate-700">
+            Verificando credenciales de acceso institucional...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no hay perfil, mostrar mensaje de bloqueo y esperar redirección
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center text-[#d30684] p-4">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-[#d30684] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-black text-[#d30684]">
+            Acceso no autorizado. Redirigiendo al inicio de sesión institucional...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (dataLoading) {
     return (
       <div className="min-h-screen bg-[#FAF8F5] flex items-center justify-center text-[#d30684] p-4">
         <div className="text-center space-y-3">

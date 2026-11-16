@@ -9,18 +9,17 @@ import { AdminLayoutShell } from '@/components/admin/AdminLayoutShell';
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // En la página de login, renderizar limpio sin layout administrativo
-  if (pathname === '/admin/login') {
-    return <>{children}</>;
-  }
-
   return (
     <AdminProvider>
-      <AdminDataProvider>
-        <AdminLayoutShell>
-          {children}
-        </AdminLayoutShell>
-      </AdminDataProvider>
+      {pathname === '/admin/login' ? (
+        children
+      ) : (
+        <AdminDataProvider>
+          <AdminLayoutShell>
+            {children}
+          </AdminLayoutShell>
+        </AdminDataProvider>
+      )}
     </AdminProvider>
   );
 }

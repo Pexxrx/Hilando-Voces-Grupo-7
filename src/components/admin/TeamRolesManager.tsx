@@ -16,9 +16,10 @@ interface LeaderEntry {
 }
 
 export function TeamRolesManager() {
-  const { profile, switchRole } = useAdminSession();
+  const { profile } = useAdminSession();
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Directorio de lideresas activas en San Juan de Lurigancho
   const [leadersDirectory, setLeadersDirectory] = useState<LeaderEntry[]>([
     {
       name: 'Rosa Huamán Quispe',
@@ -178,9 +179,11 @@ export function TeamRolesManager() {
     setShowAddModal(false);
   };
 
+  const isLideresaOrSuperadmin = profile?.role === 'lideresa' || profile?.role === 'superadmin';
+
   return (
     <div className="space-y-6">
-      {/* Banner de Roles y Gobernanza */}
+      {/* 1. Banner Superior de Roles y Gobernanza */}
       <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#D3B9B9] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="space-y-1.5">
           <div className="flex items-center space-x-2">
@@ -190,16 +193,16 @@ export function TeamRolesManager() {
             </span>
           </div>
           <h2 className="font-heading font-black text-xl sm:text-2xl text-[#1a2527] tracking-tight">
-            Equipo de Lideresas y Matriz de Roles (RBAC)
+            Equipo de Lideresas y Estructura Territorial
           </h2>
           <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
-            Estructura organizativa con control de accesos basado en roles. Define responsabilidades claras entre el triaje territorial, la ejecución de faenas en campo y la supervisión distrital.
+            Coordinación y articulación de lideresas juveniles barriales en las 7 comunas territoriales de SJL para la gestión comunitaria geocercada.
           </p>
         </div>
 
         {/* Perfil Activo en Sesión */}
         <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] flex items-center space-x-3 shrink-0">
-          <div className="w-11 h-11 rounded-2xl bg-[#d30684] text-white flex items-center justify-center font-heading font-black text-sm shadow-xs">
+          <div className="w-11 h-11 rounded-2xl bg-[#d30684] text-white flex items-center justify-center font-heading font-black text-sm shadow-2xs">
             {profile?.avatarInitials || 'RH'}
           </div>
           <div>
@@ -217,238 +220,22 @@ export function TeamRolesManager() {
         </div>
       </div>
 
-      {/* DEFINICIÓN FORMAL DE ROLES EN SAN JUAN DE LURIGANCHO */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* ROL 1: LIDERESA TERRITORIAL */}
-        <div
-          onClick={() => switchRole('lideresa')}
-          className={`p-5 rounded-3xl border-2 transition-all cursor-pointer space-y-3 relative ${
-            profile?.role === 'lideresa'
-              ? 'border-[#d30684] bg-white shadow-md ring-2 ring-[#d30684]/20'
-              : 'border-[#D3B9B9] bg-[#FAF8F5] hover:bg-white'
-          }`}
-        >
-          {profile?.role === 'lideresa' && (
-            <span className="absolute top-4 right-4 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#d30684] text-white shadow-xs">
-              Activa
-            </span>
-          )}
-          <div className="w-10 h-10 rounded-2xl bg-[#fdf2f8] border border-[#d30684]/30 text-[#d30684] flex items-center justify-center">
-            <GoogleIcon name="local_police" size={22} filled />
-          </div>
-
+      {/* 2. PRIMERA LÍNEA: DIRECTORIO DE LIDERESAS BARRIALES EN SAN JUAN DE LURIGANCHO */}
+      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D3B9B9]/50 pb-4">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#d30684] block">
-              Nivel Comunal / Territorial
-            </span>
-            <h3 className="font-heading font-black text-base text-[#1a2527]">
-              1. Lideresa Territorial SJL
-            </h3>
-          </div>
-
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Responsable del triaje integral, activación de la priorización AHP de Saaty, interlocución con juntas vecinales y certificación pública de recuperación barrial.
-          </p>
-
-          <div className="pt-2 border-t border-[#D3B9B9]/50 space-y-1 text-[11px]">
-            <span className="font-bold text-[#1a2527] block">Privilegios Clave:</span>
-            <ul className="text-slate-600 space-y-0.5 list-disc list-inside">
-              <li>Todos los permisos de gestión territorial</li>
-              <li>Aprobación y triaje de expedientes</li>
-              <li>Calendarización de faenas barriales</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* ROL 2: COORDINADORA DE FAENA BARRIAL */}
-        <div
-          onClick={() => switchRole('coordinadora')}
-          className={`p-5 rounded-3xl border-2 transition-all cursor-pointer space-y-3 relative ${
-            profile?.role === 'coordinadora'
-              ? 'border-[#E4981E] bg-white shadow-md ring-2 ring-[#E4981E]/20'
-              : 'border-[#D3B9B9] bg-[#FAF8F5] hover:bg-white'
-          }`}
-        >
-          {profile?.role === 'coordinadora' && (
-            <span className="absolute top-4 right-4 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#E4981E] text-white shadow-xs">
-              Activa
-            </span>
-          )}
-          <div className="w-10 h-10 rounded-2xl bg-[#FFFBEB] border border-[#E4981E]/30 text-[#E4981E] flex items-center justify-center">
-            <GoogleIcon name="handyman" size={22} filled />
-          </div>
-
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#E4981E] block">
-              Nivel Operativo en Campo
-            </span>
-            <h3 className="font-heading font-black text-base text-[#1a2527]">
-              2. Coordinadora de Faena
-            </h3>
-          </div>
-
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Responsable de la movilización de brigadistas juveniles, asignación de herramientas de trabajo, seguridad en terreno y captura de evidencia fotográfica del "Después".
-          </p>
-
-          <div className="pt-2 border-t border-[#D3B9B9]/50 space-y-1 text-[11px]">
-            <span className="font-bold text-[#1a2527] block">Privilegios Clave:</span>
-            <ul className="text-slate-600 space-y-0.5 list-disc list-inside">
-              <li>Planificador y fichas técnicas de campo</li>
-              <li>Coordinación WhatsApp de voluntarios</li>
-              <li>Subida de foto y certificación final</li>
-            </ul>
-          </div>
-        </div>
-
-        {/* ROL 3: SUPERVISORA COMUNAL DISTRITAL */}
-        <div
-          onClick={() => switchRole('superadmin')}
-          className={`p-5 rounded-3xl border-2 transition-all cursor-pointer space-y-3 relative ${
-            profile?.role === 'superadmin'
-              ? 'border-[#C58B7E] bg-white shadow-md ring-2 ring-[#C58B7E]/20'
-              : 'border-[#D3B9B9] bg-[#FAF8F5] hover:bg-white'
-          }`}
-        >
-          {profile?.role === 'superadmin' && (
-            <span className="absolute top-4 right-4 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#C58B7E] text-white shadow-xs">
-              Activa
-            </span>
-          )}
-          <div className="w-10 h-10 rounded-2xl bg-[#F3E8E8] border border-[#C58B7E]/30 text-[#C58B7E] flex items-center justify-center">
-            <GoogleIcon name="policy" size={22} filled />
-          </div>
-
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#C58B7E] block">
-              Nivel Auditoría y Cumplimiento
-            </span>
-            <h3 className="font-heading font-black text-base text-[#1a2527]">
-              3. Supervisora Comunal
-            </h3>
-          </div>
-
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Fiscalización legal e institucional. Asegura el cumplimiento de la Ley N° 29733 de Protección de Datos Personales y valida la consistencia matemática de las priorizaciones.
-          </p>
-
-          <div className="pt-2 border-t border-[#D3B9B9]/50 space-y-1 text-[11px]">
-            <span className="font-bold text-[#1a2527] block">Privilegios Clave:</span>
-            <ul className="text-slate-600 space-y-0.5 list-disc list-inside">
-              <li>Auditoría de consistencia AHP (CR &lt; 0.10)</li>
-              <li>Supervisión de privacidad Ley 29733</li>
-              <li>Control de accesos y trazabilidad</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* MATRIZ DE PERMISOS POR ROL (TABLA RBAC DETALLADA) */}
-      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D3B9B9]/60 pb-3">
-          <div>
-            <h3 className="font-heading font-black text-base text-[#1a2527]">
-              Matriz Formal de Roles y Permisos (RBAC)
-            </h3>
-            <p className="text-xs text-slate-500">
-              Control granular de funciones territoriales, operativas y de fiscalización en SJL
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-3 text-xs">
-            <span className="flex items-center space-x-1 text-slate-600 font-bold">
-              <GoogleIcon name="check_circle" filled size={16} className="text-[#588157]" />
-              <span>Habilitado</span>
-            </span>
-            <span className="flex items-center space-x-1 text-slate-400 font-bold">
-              <GoogleIcon name="remove" size={16} className="text-slate-300" />
-              <span>Sin Acceso</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-[#D3B9B9] text-slate-500 bg-[#FAF8F5]">
-                <th className="py-3 px-4 font-bold uppercase text-[10px]">Módulo y Funcionalidad</th>
-                <th className="py-3 px-3 text-center font-bold uppercase text-[10px] text-[#d30684] w-28">
-                  Lideresa
-                </th>
-                <th className="py-3 px-3 text-center font-bold uppercase text-[10px] text-[#E4981E] w-28">
-                  Coordinadora
-                </th>
-                <th className="py-3 px-3 text-center font-bold uppercase text-[10px] text-[#C58B7E] w-28">
-                  Supervisora
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#D3B9B9]/50">
-              {permissionsMatrix.map((row, i) => (
-                <tr key={i} className="hover:bg-[#FAF8F5] transition-colors">
-                  <td className="py-3 px-4">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-                      {row.category}
-                    </span>
-                    <span className="font-bold text-[#1a2527] block text-xs">{row.permission}</span>
-                    <span className="text-[11px] text-slate-500 block">{row.description}</span>
-                  </td>
-
-                  {/* Lideresa */}
-                  <td className="py-3 px-3 text-center bg-[#fdf2f8]/30">
-                    {row.lideresa ? (
-                      <div className="w-6 h-6 rounded-full bg-[#DAE3D9] text-[#1a2527] flex items-center justify-center mx-auto shadow-2xs">
-                        <GoogleIcon name="check" size={14} />
-                      </div>
-                    ) : (
-                      <GoogleIcon name="remove" size={16} className="text-slate-300 mx-auto" />
-                    )}
-                  </td>
-
-                  {/* Coordinadora */}
-                  <td className="py-3 px-3 text-center bg-[#FFFBEB]/30">
-                    {row.coordinadora ? (
-                      <div className="w-6 h-6 rounded-full bg-[#DAE3D9] text-[#1a2527] flex items-center justify-center mx-auto shadow-2xs">
-                        <GoogleIcon name="check" size={14} />
-                      </div>
-                    ) : (
-                      <GoogleIcon name="remove" size={16} className="text-slate-300 mx-auto" />
-                    )}
-                  </td>
-
-                  {/* Supervisora */}
-                  <td className="py-3 px-3 text-center bg-[#F3E8E8]/30">
-                    {row.superadmin ? (
-                      <div className="w-6 h-6 rounded-full bg-[#DAE3D9] text-[#1a2527] flex items-center justify-center mx-auto shadow-2xs">
-                        <GoogleIcon name="check" size={14} />
-                      </div>
-                    ) : (
-                      <GoogleIcon name="remove" size={16} className="text-slate-300 mx-auto" />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* DIRECTORIO DE LIDERESAS BARRIALES EN SAN JUAN DE LURIGANCHO */}
-      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="font-heading font-black text-base text-[#1a2527]">
+            <h3 className="font-heading font-black text-lg text-[#1a2527]">
               Directorio de Lideresas Barriales SJL ({leadersDirectory.length})
             </h3>
             <p className="text-xs text-slate-500">
-              Compañeras asignadas por comunas para articular la respuesta vecinal
+              Compañeras asignadas territorialmente para articular la respuesta vecinal en cada comuna
             </p>
           </div>
 
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center space-x-1.5 self-start sm:self-auto"
+            className="px-4 py-2.5 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center space-x-1.5 self-start sm:self-auto"
           >
             <GoogleIcon name="person_add" size={16} />
             <span>Asignar Nueva Lideresa</span>
@@ -463,12 +250,12 @@ export function TeamRolesManager() {
             return (
               <div
                 key={i}
-                className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] space-y-3 text-xs"
+                className="p-5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] space-y-3 text-xs shadow-2xs hover:border-[#d30684] transition-all"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="flex items-center space-x-3 min-w-0">
                     <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-heading font-black text-xs shrink-0 ${
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center font-heading font-black text-xs shrink-0 shadow-2xs ${
                         isLideresa
                           ? 'bg-[#d30684] text-white'
                           : isCoord
@@ -483,17 +270,17 @@ export function TeamRolesManager() {
                         .join('')}
                     </div>
                     <div className="min-w-0">
-                      <span className="font-bold text-[#1a2527] text-xs truncate block">
+                      <span className="font-bold text-[#1a2527] text-sm truncate block">
                         {leader.name}
                       </span>
-                      <span className="text-[10px] text-slate-500 truncate block">
+                      <span className="text-[11px] text-slate-500 truncate block">
                         {leader.email}
                       </span>
                     </div>
                   </div>
 
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 ${
+                    className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 ${
                       leader.status === 'Activa'
                         ? 'bg-[#DAE3D9] text-[#1a2527]'
                         : leader.status === 'En Campo'
@@ -505,9 +292,9 @@ export function TeamRolesManager() {
                   </span>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-1 pt-1">
                   <span
-                    className={`text-[11px] font-bold block ${
+                    className={`text-xs font-bold block ${
                       isLideresa
                         ? 'text-[#d30684]'
                         : isCoord
@@ -517,22 +304,119 @@ export function TeamRolesManager() {
                   >
                     {leader.roleTitle}
                   </span>
-                  <p className="text-slate-600 text-[11px] flex items-center space-x-1">
+                  <p className="text-slate-600 text-xs flex items-center space-x-1">
                     <span>📍 {leader.sector}</span>
                   </p>
                 </div>
 
-                <div className="pt-2 border-t border-[#D3B9B9]/60 flex items-center justify-between text-[11px] text-slate-600">
+                <div className="pt-2.5 border-t border-[#D3B9B9]/60 flex items-center justify-between text-xs text-slate-600">
                   <span>
                     Casos articulados: <strong>{leader.casesAttended}</strong>
                   </span>
-                  <span className="font-mono font-bold text-slate-700">{leader.phone}</span>
+                  <span className="font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded-lg border border-[#D3B9B9]/50">
+                    {leader.phone}
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* 3. MATRIZ DE PERMISOS POR ROL (RBAC) - EXCLUSIVO PARA LA LIDERESA AL FINAL DEL TODO */}
+      {isLideresaOrSuperadmin && (
+        <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D3B9B9]/60 pb-3">
+            <div>
+              <div className="flex items-center space-x-2">
+                <GoogleIcon name="lock" size={18} className="text-[#d30684]" />
+                <h3 className="font-heading font-black text-base text-[#1a2527]">
+                  Matriz Formal de Roles y Permisos (RBAC)
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Panel de consulta de privilegios para la gobernanza comunitaria de San Juan de Lurigancho
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3 text-xs">
+              <span className="flex items-center space-x-1 text-slate-600 font-bold">
+                <GoogleIcon name="check_circle" filled size={16} className="text-[#588157]" />
+                <span>Habilitado</span>
+              </span>
+              <span className="flex items-center space-x-1 text-slate-400 font-bold">
+                <GoogleIcon name="remove" size={16} className="text-slate-300" />
+                <span>Sin Acceso</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-[#D3B9B9] text-slate-500 bg-[#FAF8F5]">
+                  <th className="py-3 px-4 font-bold uppercase text-[10px]">Módulo y Funcionalidad</th>
+                  <th className="py-3 px-3 text-center font-bold uppercase text-[10px] text-[#d30684] w-28">
+                    Lideresa
+                  </th>
+                  <th className="py-3 px-3 text-center font-bold uppercase text-[10px] text-[#E4981E] w-28">
+                    Coordinadora
+                  </th>
+                  <th className="py-3 px-3 text-center font-bold uppercase text-[10px] text-[#C58B7E] w-28">
+                    Supervisora
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#D3B9B9]/50">
+                {permissionsMatrix.map((row, i) => (
+                  <tr key={i} className="hover:bg-[#FAF8F5] transition-colors">
+                    <td className="py-3 px-4">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                        {row.category}
+                      </span>
+                      <span className="font-bold text-[#1a2527] block text-xs">{row.permission}</span>
+                      <span className="text-[11px] text-slate-500 block">{row.description}</span>
+                    </td>
+
+                    {/* Lideresa */}
+                    <td className="py-3 px-3 text-center bg-[#fdf2f8]/30">
+                      {row.lideresa ? (
+                        <div className="w-6 h-6 rounded-full bg-[#DAE3D9] text-[#1a2527] flex items-center justify-center mx-auto shadow-2xs">
+                          <GoogleIcon name="check" size={14} />
+                        </div>
+                      ) : (
+                        <GoogleIcon name="remove" size={16} className="text-slate-300 mx-auto" />
+                      )}
+                    </td>
+
+                    {/* Coordinadora */}
+                    <td className="py-3 px-3 text-center bg-[#FFFBEB]/30">
+                      {row.coordinadora ? (
+                        <div className="w-6 h-6 rounded-full bg-[#DAE3D9] text-[#1a2527] flex items-center justify-center mx-auto shadow-2xs">
+                          <GoogleIcon name="check" size={14} />
+                        </div>
+                      ) : (
+                        <GoogleIcon name="remove" size={16} className="text-slate-300 mx-auto" />
+                      )}
+                    </td>
+
+                    {/* Supervisora */}
+                    <td className="py-3 px-3 text-center bg-[#F3E8E8]/30">
+                      {row.superadmin ? (
+                        <div className="w-6 h-6 rounded-full bg-[#DAE3D9] text-[#1a2527] flex items-center justify-center mx-auto shadow-2xs">
+                          <GoogleIcon name="check" size={14} />
+                        </div>
+                      ) : (
+                        <GoogleIcon name="remove" size={16} className="text-slate-300 mx-auto" />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* MODAL PARA ASIGNAR NUEVA LIDERESA */}
       {showAddModal && (
