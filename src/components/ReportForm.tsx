@@ -57,6 +57,43 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
   const [copied, setCopied] = useState(false);
 
   // Verificación real de ubicación ciudadana por GPS (sin saltos manuales)
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height = Math.round((height * MAX_SIZE) / width);
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width = Math.round((width * MAX_SIZE) / height);
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.onerror = () => resolve((event.target?.result as string) || '');
+        img.src = (event.target?.result as string) || '';
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleRequestLocationPermission = () => {
     setVerifyingLocation(true);
     setLocationVerificationError(null);
@@ -95,8 +132,8 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
     );
   };
 
-  // Manejo de fotografías múltiples (1 a 3 fotos)
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Manejo de fotografías múltiples (1 a 3 fotos con compresión automática)
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -105,21 +142,18 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
 
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
-    filesToProcess.forEach((file) => {
-      if (!file.type.startsWith('image/')) return;
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (reader.result) {
-          setPhotos((prev) => {
-            if (prev.length >= 3) return prev;
-            return [...prev, reader.result as string];
-          });
+    for (const file of filesToProcess) {
+      if (!file.type.startsWith('image/')) continue;
+      try {
+        const compressed = await compressImage(file);
+        if (compressed) {
+          setPhotos((prev) => (prev.length >= 3 ? prev : [...prev, compressed]));
           setStep3Notice(null);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.warn('Error procesando imagen:', err);
+      }
+    }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -243,29 +277,34 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setSubmitError(data.error || 'Ocurrió un inconveniente al procesar el reporte. Por favor, intenta nuevamente.');
+        setSubmitError(data?.error || 'Ocurrió un inconveniente al procesar el reporte.');
         setSubmitting(false);
         return;
       }
+
+      const ticketCode = data.ticket_code;
+      const ticketAxis = data.axis || axis || 'alumbrado';
+      const ticketCreated = data.created_at || new Date().toISOString();
 
       // Guardar ticket en LocalStorage del dispositivo
       const stored = localStorage.getItem('hv_tickets');
       const ticketList = stored ? JSON.parse(stored) : [];
       ticketList.unshift({
-        code: data.ticket_code,
-        axis: data.axis,
-        created_at: data.created_at,
+        code: ticketCode,
+        axis: ticketAxis,
+        created_at: ticketCreated,
       });
       localStorage.setItem('hv_tickets', JSON.stringify(ticketList));
 
       setTicketResult({
-        code: data.ticket_code,
-        axis: data.axis,
-        created_at: data.created_at,
+        code: ticketCode,
+        axis: ticketAxis,
+        created_at: ticketCreated,
       });
       setStep(5);
     } catch (err: any) {
-      setSubmitError('Error de comunicación con el servidor. Revisa tu conexión a internet.');
+      console.error('Error enviando formulario:', err);
+      setSubmitError('Error de comunicación con el servidor. Revisa tu conexión a internet o verifica el estado de la API.');
     } finally {
       setSubmitting(false);
     }
@@ -798,7 +837,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
-                      capture="environment"
                       multiple
                       onChange={handlePhotoUpload}
                       className="hidden"
