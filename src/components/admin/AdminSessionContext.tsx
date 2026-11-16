@@ -50,6 +50,7 @@ interface AdminContextType {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   switchRole: (role: AdminRole) => void;
+  login: (profile: AdminProfile) => void;
   signOut: (reason?: string) => Promise<void>;
   checkSession: () => boolean;
 }
@@ -82,6 +83,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
   }, [profile]);
 
+  const login = useCallback((newProfile: AdminProfile) => {
+    localStorage.setItem('hv_admin_profile', JSON.stringify(newProfile));
+    sessionStorage.setItem('hv_last_activity', Date.now().toString());
+    setProfile(newProfile);
+    setLoading(false);
+  }, []);
+
   const signOut = useCallback(
     async (reason?: string) => {
       try {
@@ -98,16 +106,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initSession = async () => {
-      // 1. Si estamos en la pantalla de login, forzar cierre de credenciales
-      if (typeof window !== 'undefined' && window.location.pathname === '/admin/login') {
-        localStorage.removeItem('hv_admin_profile');
-        sessionStorage.clear();
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Verificar si hay sesión activa en localStorage
+      // 1. Verificar si hay sesión activa en localStorage
       const cached = localStorage.getItem('hv_admin_profile');
       if (cached) {
         try {
@@ -120,7 +119,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 3. Verificar sesión de Supabase Auth
+      // 2. Verificar sesión de Supabase Auth
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData.session) {
@@ -156,18 +155,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
     initSession();
 
-    // Detección estricta de navegación Atrás / Adelante (Back / Forward cache & History traversal)
+    // Detección cuando se restaura desde la caché de navegación Atrás / Adelante (bfcache)
     const handlePageShow = (event: PageTransitionEvent) => {
-      let isBackForward = event.persisted;
-      if (!isBackForward && typeof performance !== 'undefined') {
-        const navEntries = performance.getEntriesByType('navigation');
-        if (navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === 'back_forward') {
-          isBackForward = true;
-        }
-      }
-
-      // Si el usuario navegó usando los botones Atrás / Adelante del navegador
-      if (isBackForward) {
+      if (event.persisted) {
+        // La página fue restaurada desde el historial (botón Atrás o Adelante fuera del sitio)
         localStorage.removeItem('hv_admin_profile');
         sessionStorage.clear();
         setProfile(null);
@@ -183,21 +174,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Evento popstate: se activa inmediatamente cuando el usuario presiona "Atrás" o "Adelante"
-    const handlePopState = () => {
-      localStorage.removeItem('hv_admin_profile');
-      sessionStorage.clear();
-      setProfile(null);
-      router.replace('/admin/login');
-    };
-
     window.addEventListener('pageshow', handlePageShow);
-    window.addEventListener('popstate', handlePopState);
     window.addEventListener('storage', () => checkSession());
 
     return () => {
       window.removeEventListener('pageshow', handlePageShow);
-      window.removeEventListener('popstate', handlePopState);
     };
   }, [router, checkSession]);
 
@@ -263,6 +244,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         activeTab,
         setActiveTab,
         switchRole,
+        login,
         signOut,
         checkSession,
       }}

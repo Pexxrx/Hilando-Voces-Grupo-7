@@ -11,7 +11,7 @@ const LOCKOUT_SECONDS = 60;
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { checkSession } = useAdminSession();
+  const { login } = useAdminSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -94,8 +94,7 @@ export default function AdminLoginPage() {
 
         if (matchedRole && cleanPassword.length >= 6) {
           const profile = OFFICIAL_ADMIN_PROFILES[matchedRole];
-          localStorage.setItem('hv_admin_profile', JSON.stringify(profile));
-          checkSession();
+          login(profile);
           setFailedAttempts(0);
           router.replace('/admin/centro-mando');
           return;
@@ -136,8 +135,7 @@ export default function AdminLoginPage() {
           avatarInitials: 'LH',
         };
 
-        localStorage.setItem('hv_admin_profile', JSON.stringify(profile));
-        checkSession();
+        login(profile);
         setFailedAttempts(0);
         router.replace('/admin/centro-mando');
       }
