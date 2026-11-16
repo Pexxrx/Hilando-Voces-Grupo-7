@@ -1,14 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
 import { MOCK_REPORTS_25, ExtendedReport } from '@/data/mockReports';
+import { validateAdminAuth, sanitizeReportData } from '@/lib/authGuard';
 
 /**
  * Endpoint administrativo para líderes de San Juan de Lurigancho
  * Provee la lista de 25 reportes territoriales enriquecidos con datos de coordinación de campo,
  * resúmenes del Copiloto Gemini y datos de voluntariado vecinal (Ley N° 29733).
+ * 
+ * AUDITORÍA DE CIBERSEGURIDAD:
+ * - Valida autenticación y rol de lideresa comunitaria antes de entregar datos.
+ * - Sanitiza y suprime hashes criptográficos (anti_spam_hash).
+ * - Protege los números telefónicos bajo la Ley N° 29733 de Protección de Datos Personales.
  */
 export async function GET(req: NextRequest) {
   try {
+    // 1. Control de Acceso y Autenticación RBAC
+    const auth = await validateAdminAuth(req, ['lideresa', 'coordinadora', 'superadmin']);
+    if (!auth.authenticated) {
+      return NextResponse.json(
+        { error: auth.error || 'Acceso no autorizado al Centro de Mando.' },
+        { status: auth.statusCode || 401 }
+      );
+    }
+
     const url = new URL(req.url);
     const axis = url.searchParams.get('axis');
     const status = url.searchParams.get('status');
@@ -48,18 +63,23 @@ export async function GET(req: NextRequest) {
       filtered = filtered.filter((r) => r.status === status);
     }
 
+    // Sanitizar reportes (eliminación de hashes internos y protección Ley N° 29733)
+    const sanitizedReports = filtered.map((r) => sanitizeReportData(r, auth.role));
+
     return NextResponse.json({
       success: true,
-      total: filtered.length,
-      reports: filtered,
+      total: sanitizedReports.length,
+      reports: sanitizedReports,
+      userRole: auth.role,
     });
   } catch (err: any) {
+    if (err?.digest?.startsWith('NEXT_')) {
+      throw err;
+    }
     console.error('Error en GET /api/admin/reports:', err);
-    // Fallback de alta disponibilidad
-    return NextResponse.json({
-      success: true,
-      total: MOCK_REPORTS_25.length,
-      reports: MOCK_REPORTS_25,
-    });
+    return NextResponse.json(
+      { error: 'Error interno del servidor al procesar reportes administrativos.' },
+      { status: 500 }
+    );
   }
 }

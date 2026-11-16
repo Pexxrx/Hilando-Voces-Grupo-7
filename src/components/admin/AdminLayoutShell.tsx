@@ -78,7 +78,11 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
     try {
       await fetch(`/api/admin/reports/${reportId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-email': profile?.email || 'lideresa.canto@hilandovoces.pe',
+          'x-admin-role': profile?.role || 'lideresa',
+        },
         body: JSON.stringify({
           status: 'resuelto',
           photo_after_url: finalPhoto,

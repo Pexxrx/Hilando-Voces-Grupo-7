@@ -36,7 +36,7 @@ export function Navbar() {
             <Link
               href="/"
               className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl font-bold transition-all ${
-                pathname === '/' || pathname === '/demo'
+                pathname === '/'
                   ? 'bg-[#d30684] text-white shadow-md shadow-[#d30684]/20'
                   : 'text-[#1a2527] hover:text-[#d30684] hover:bg-[#FAF8F5]'
               }`}

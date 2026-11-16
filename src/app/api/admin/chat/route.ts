@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
-import { MOCK_REPORTS_25 } from '@/data/mockReports';
-import { AHP_WEIGHTS, AHP_CONSISTENCY } from '@/lib/ahp';
+import { validateAdminAuth } from '@/lib/authGuard';
+import { sanitizeText } from '@/lib/hasher';
 
 // Resumen del contexto territorial de San Juan de Lurigancho para la IA
 const SJL_CONTEXT_SUMMARY = `
@@ -25,8 +25,19 @@ DATOS DEL SISTEMA COMUNITARIO "HILANDO VOCES" - SAN JUAN DE LURIGANCHO:
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, userRole, userName, customApiKey } = await req.json();
+    // 1. Control de Autenticación de Lideresa / Coordinadora
+    const auth = await validateAdminAuth(req, ['lideresa', 'coordinadora', 'superadmin']);
+    if (!auth.authenticated) {
+      return NextResponse.json(
+        { error: auth.error || 'Acceso restringido: Se requiere iniciar sesión en el portal de lideresas.' },
+        { status: auth.statusCode || 401 }
+      );
+    }
 
+    const body = await req.json();
+    const { messages, userRole, userName, customApiKey } = body;
+
+    // 2. Validación y Sanitización de Entrada (Anti-DoS y Anti-Inyección)
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
         { error: 'Se requiere un historial de mensajes válido.' },
@@ -34,13 +45,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const lastMessage = messages[messages.length - 1]?.content || '';
-    const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY || '';
+    // Limitar longitud del historial a los últimos 6 mensajes
+    const recentMessages = messages.slice(-6);
+    const rawLastMessage = recentMessages[recentMessages.length - 1]?.content || '';
+    
+    // Sanitizar texto de entrada
+    const lastMessage = sanitizeText(rawLastMessage).slice(0, 1000);
+
+    if (!lastMessage.trim()) {
+      return NextResponse.json(
+        { error: 'El mensaje no puede estar vacío.' },
+        { status: 400 }
+      );
+    }
+
+    // Filtrar clave personalizada (debe ser una cadena alfanumérica segura)
+    let activeApiKey = process.env.GEMINI_API_KEY || '';
+    if (customApiKey && typeof customApiKey === 'string' && /^AIzaSy[A-Za-z0-9_-]{33}$/.test(customApiKey.trim())) {
+      activeApiKey = customApiKey.trim();
+    }
+
+    const cleanUserName = sanitizeText(userName || 'Lideresa').slice(0, 50);
+    const cleanUserRole = sanitizeText(userRole || auth.role || 'Lideresa Territorial SJL').slice(0, 50);
 
     const systemInstruction = `
 Eres Warmicha 🦉🧵, la mascota y copiloto comunitaria oficial del panel de lideresas de "Hilando Voces" en San Juan de Lurigancho (SJL), Lima, Perú.
 Eres una lechuza vigía comunitaria inteligente, empática, ejecutiva y motivadora. Vistes una chalina con los colores de Warmi (magenta #d30684 y ámbar #E4981E).
-Te estás comunicando con ${userName || 'Lideresa'}, quien tiene el rol de ${userRole || 'Lideresa Territorial SJL'}.
+Te estás comunicando con ${cleanUserName}, quien tiene el rol de ${cleanUserRole}.
 
 Tu conocimiento abarca:
 1. Las 29 incidencias de San Juan de Lurigancho y su priorización científica mediante el modelo AHP de Saaty (Seguridad 48.47%, Salud 22.68%, Equidad 14.31%, Alcance 8.88%, Convivencia 5.66%).
@@ -55,7 +86,7 @@ Reglas:
 - Responde con calidez comunitaria sin sonar acartonada ni robótica.
 `;
 
-    // 1. Intentar llamar a Gemini API (si se cuenta con API key válida)
+    // 3. Intentar llamar a Gemini API si hay API key válida
     if (activeApiKey) {
       try {
         const ai = new GoogleGenAI({ apiKey: activeApiKey });
@@ -66,9 +97,9 @@ CONTEXTO TERRITORIAL Y OPERATIVO:
 ${SJL_CONTEXT_SUMMARY}
 
 HISTORIAL DE CONVERSACIÓN RECIENTE:
-${messages
+${recentMessages
   .slice(-4)
-  .map((m: any) => `${m.role === 'user' ? 'Lideresa' : 'Warmicha'}: ${m.content}`)
+  .map((m: any) => `${m.role === 'user' ? 'Lideresa' : 'Warmicha'}: ${sanitizeText(m.content).slice(0, 300)}`)
   .join('\n')}
 
 Pregunta actual de la Lideresa:
@@ -93,9 +124,8 @@ Respuesta de Warmicha:`;
       }
     }
 
-    // 2. Motor de Razonamiento Semántico Autónomo de Alta Fidelidad
-    // Responde dinámicamente a CUALQUIER pregunta sobre el territorio, datos, AHP, voluntarios, faenas o liderazgo.
-    const dynamicReply = processAutonomousWarmichaReasoning(lastMessage, userName, userRole);
+    // 4. Motor de Razonamiento Semántico Autónomo de Alta Fidelidad
+    const dynamicReply = processAutonomousWarmichaReasoning(lastMessage, cleanUserName, cleanUserRole);
 
     return NextResponse.json({
       reply: dynamicReply,
@@ -116,7 +146,6 @@ Respuesta de Warmicha:`;
 
 /**
  * Motor Autónomo de Razonamiento Dinámico de Warmicha
- * Procesa el lenguaje natural de la lideresa y formula respuestas contextualizadas
  */
 function processAutonomousWarmichaReasoning(
   query: string,
@@ -144,7 +173,7 @@ function processAutonomousWarmichaReasoning(
       `3. **Equidad Territorial (14.31%):** Favorece asentamientos humanos altos, laderas y escaleras sin servicios básicos.\n` +
       `4. **Alcance Poblacional (8.88%):** Mide el volumen de familias y transeúntes beneficiados.\n` +
       `5. **Convivencia y Espacio Público (5.66%):** Recuperación de losas deportivas y parques infantiles.\n\n` +
-      `Nuestra matriz tiene una **Razón de Consistencia (CR) de 0.0221**, muy por debajo del umbral límite de 0.10, lo que garantiza rigor científico y coherencia matemática. Puedes ver el ranking completo en la nueva pestaña **"Priorización AHP"**.`
+      `Nuestra matriz tiene una **Razón de Consistencia (CR) de 0.0221**, muy por debajo del umbral límite de 0.10, lo que garantiza rigor científico y coherencia matemática. Puedes ver el ranking completo en la pestaña **"Priorización AHP"**.`
     );
   }
 

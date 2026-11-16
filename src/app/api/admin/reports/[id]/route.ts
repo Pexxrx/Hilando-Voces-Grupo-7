@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseClient';
+import { validateAdminAuth } from '@/lib/authGuard';
 
 const ALLOWED_STATUSES = ['recibido', 'en_evaluacion', 'faena_programada', 'resuelto'];
 const ALLOWED_PRIORITIES = ['baja', 'media', 'alta', 'urgente'];
@@ -10,15 +11,41 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // 1. Control de Autenticación de Lideresa / Coordinadora
+    const auth = await validateAdminAuth(req, ['lideresa', 'coordinadora', 'superadmin']);
+    if (!auth.authenticated) {
+      return NextResponse.json(
+        { error: auth.error || 'No autorizado para modificar expedientes.' },
+        { status: auth.statusCode || 401 }
+      );
+    }
+
     const { id } = await params;
 
-    // Validación de ID (UUID de Supabase o ID de catálogo de SJL)
+    // 2. Validación estricta de ID (Prevención de Inyección de parámetros)
     if (!id || !VALID_ID_REGEX.test(id)) {
       return NextResponse.json({ error: 'Identificador de reporte inválido.' }, { status: 400 });
     }
 
     const body = await req.json();
     const { status, priority_level, photo_after_url } = body;
+
+    // 3. Reglas RBAC de modificación
+    // Coordinadoras de faena solo pueden agendar faenas o certificar resoluciones con foto
+    if (auth.role === 'coordinadora') {
+      if (priority_level) {
+        return NextResponse.json(
+          { error: 'Las coordinadoras de faena no tienen permisos para alterar niveles de prioridad AHP.' },
+          { status: 403 }
+        );
+      }
+      if (status && !['faena_programada', 'resuelto'].includes(status)) {
+        return NextResponse.json(
+          { error: 'Las coordinadoras solo pueden programar faenas o marcar casos como resueltos.' },
+          { status: 403 }
+        );
+      }
+    }
 
     const updates: Record<string, any> = {};
 
@@ -40,6 +67,10 @@ export async function PATCH(
     }
 
     if (photo_after_url && typeof photo_after_url === 'string') {
+      // Validar que sea una URL HTTPS segura o imagen base64 de tamaño razonable
+      if (photo_after_url.length > 5000000) {
+        return NextResponse.json({ error: 'El tamaño de la fotografía excede el límite permitido.' }, { status: 400 });
+      }
       updates.photo_after_url = photo_after_url;
     }
 
@@ -47,7 +78,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'No se enviaron campos válidos para actualizar.' }, { status: 400 });
     }
 
-    // Si es un reporte sintético territorial del dataset oficial de SJL
+    // 4. Si es un reporte sintético territorial del dataset oficial de SJL
     if (id.startsWith('rep-sjl-')) {
       return NextResponse.json({
         success: true,
@@ -59,7 +90,7 @@ export async function PATCH(
       });
     }
 
-    // Si es un reporte persistido en Supabase
+    // 5. Si es un reporte persistido en Supabase
     const { data, error } = await supabaseAdmin
       .from('reports')
       .update(updates)

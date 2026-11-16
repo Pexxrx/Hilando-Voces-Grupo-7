@@ -85,7 +85,11 @@ export function WarmichaChatbot() {
     try {
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-email': profile?.email || 'lideresa.canto@hilandovoces.pe',
+          'x-admin-role': profile?.role || 'lideresa',
+        },
         body: JSON.stringify({
           messages: [...messages, userMsg].map((m) => ({
             role: m.role,

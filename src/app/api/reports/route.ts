@@ -158,6 +158,9 @@ export async function POST(req: NextRequest) {
       axis: data.axis,
     });
   } catch (err: any) {
+    if (err?.digest?.startsWith('NEXT_')) {
+      throw err;
+    }
     console.error('Error en POST /api/reports:', err);
     return NextResponse.json(
       { error: 'Error interno del servidor al procesar el reporte.' },
@@ -193,6 +196,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ reports: data || [] });
   } catch (err: any) {
+    if (err?.digest?.startsWith('NEXT_')) {
+      throw err;
+    }
     return NextResponse.json({ error: 'Error interno al consultar reportes' }, { status: 500 });
   }
 }

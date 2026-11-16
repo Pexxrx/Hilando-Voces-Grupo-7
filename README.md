@@ -74,86 +74,107 @@ El proyecto sigue una arquitectura modular y desacoplada dentro del stack Next.j
 ```
 hilando-voces/
 ├── public/
-│   └── images/dni/            # Guías visuales oficiales RENIEC (DNI azul, DNIe, DNIe 2020)
+│   └── images/dni/                # Guías visuales oficiales RENIEC (DNI azul, DNIe, DNIe 2020)
+├── scripts/
+│   └── ahp_prioritizer.py         # Script en Python de validación matemática AHP de Saaty
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx         # Inyección de Google Sans y Material Symbols
-│   │   ├── globals.css        # Variables de diseño Warmi, reglas de Leaflet y tipografía
-│   │   ├── page.tsx           # Página principal: Formulario ciudadano protagónico
-│   │   ├── consultar/         # Módulo de seguimiento ciudadano por Ticket o DNI
-│   │   ├── admin/             # Panel de Lideresas Barriales y Asignación de Faenas
+│   │   ├── layout.tsx             # Inyección de Google Sans y Material Symbols
+│   │   ├── globals.css            # Tokens de diseño Warmi, reglas de Leaflet y tipografía
+│   │   ├── page.tsx               # Página principal: Formulario ciudadano protagónico
+│   │   ├── consultar/             # Módulo de consulta ciudadana por Ticket o DNI
+│   │   ├── admin/                 # Portal Territorial de Lideresas Barriales
+│   │   │   ├── layout.tsx         # Layout con Route Guard estricto y AdminSessionProvider
+│   │   │   ├── login/             # Puerta de autenticación formal RBAC
+│   │   │   ├── centro-mando/      # Dashboard gerencial: Mapa territorial y KPIs
+│   │   │   ├── bandeja/           # Bandeja de incidencias comunales estilo correo
+│   │   │   ├── calendario/        # Planificador mensual de faenas y descarga de fichas
+│   │   │   ├── ahp/               # Priorización multicriterio científica AHP de Saaty
+│   │   │   ├── voluntarios/       # Directorio barrial de herramientas y cuadrillas
+│   │   │   ├── rendicion/         # Bitácora comunal fotográfica Antes / Después
+│   │   │   └── equipo/            # Directorio de lideresas y matriz formal RBAC
 │   │   └── api/
-│   │       ├── reports/       # Endpoint de creación y consulta pública territorial
-│   │       │   └── consult/   # Endpoint seguro de recuperación de casos
-│   │       └── admin/reports/ # Gestión de estados y rendición de cuentas
+│   │       ├── reports/           # Creación y consulta territorial pública
+│   │       │   └── consult/       # Recuperación de expedientes anónimos
+│   │       └── admin/
+│   │           ├── reports/       # Dataset enriquecido con verificación RBAC y Ley 29733
+│   │           │   └── [id]/      # Actualización de estados y fotos de faena
+│   │           └── chat/          # Copiloto territorial Warmicha con Gemini 2.5 Flash
 │   ├── components/
-│   │   ├── GoogleIcon.tsx     # Componente nativo de Material Symbols
-│   │   ├── Navbar.tsx         # Barra de navegación institucional accesible
-│   │   ├── ReportForm.tsx     # Formulario en 4 pasos accesible para toda edad
-│   │   ├── LocationPickerMap.tsx # Mapa selector Leaflet optimizado sin cortes
-│   │   ├── TerritorialMap.tsx # Mapa de calor e incidencias distritales
-│   │   ├── Timeline.tsx       # Línea de tiempo de rendición de cuentas (Antes / Después)
-│   │   └── FaenaSheetModal.tsx # Generador de ficha técnica comunal imprimible
+│   │   ├── admin/                 # Componentes modulares del portal de lideresas
+│   │   │   ├── AdminSessionContext.tsx # Contexto de sesión y persistencia local
+│   │   │   ├── AdminDataContext.tsx    # Contexto unificado de reportes y mutaciones
+│   │   │   ├── AdminLayoutShell.tsx    # Shell administrativa con barra lateral colapsable
+│   │   │   ├── DashboardOverview.tsx   # Centro de mando territorial con mapa interactivo
+│   │   │   ├── IncidentsManager.tsx    # Bandeja de casos con vista previa y triaje
+│   │   │   ├── FaenasPlanner.tsx       # Calendario de jornadas comunitarias
+│   │   │   ├── AHPPrioritizerView.tsx  # Matriz de consistencia AHP y ranking científico
+│   │   │   ├── VolunteersDirectory.tsx # Directorio de brigadistas y enlace a WhatsApp
+│   │   │   ├── AccountabilityGallery.tsx # Galería de transformación territorial
+│   │   │   ├── TeamRolesManager.tsx    # Directorio de dirigentas y matriz RBAC
+│   │   │   └── WarmichaChatbot.tsx     # Chatbot flotante interactivo con IA
+│   │   ├── GoogleIcon.tsx         # Iconos oficiales Google Fonts Material Symbols
+│   │   ├── Navbar.tsx             # Barra institucional ciudadana
+│   │   ├── ReportForm.tsx         # Formulario en 4 pasos accesible para toda edad
+│   │   ├── LocationPickerMap.tsx  # Selector Leaflet con geofencing de SJL
+│   │   ├── TerritorialMap.tsx     # Mapa territorial de calor e incidencias
+│   │   └── FaenaSheetModal.tsx    # Generador e impresor de Ficha Técnica comunal
 │   ├── lib/
-│   │   ├── hasher.ts          # HMAC-SHA-256 en memoria, anti-IDOR #HV-SJL-YYYYY y sanitización
-│   │   ├── geofencing.ts      # Verificación matemática de punto en polígono (SJL)
-│   │   ├── gemini.ts          # Integración con Google Gen AI SDK (Gemini 3.8 Flash)
-│   │   └── supabaseClient.ts  # Cliente cliente/servidor seguro para Supabase PostGIS
+│   │   ├── ahp.ts                 # Algoritmo de Saaty, normalización de pesos y vector propio
+│   │   ├── authGuard.ts           # Middleware defensivo de autenticación y sanitización RBAC
+│   │   ├── hasher.ts              # HMAC-SHA-256 en memoria, anti-IDOR #HV-SJL-YYYYY
+│   │   ├── geofencing.ts          # Ray-casting espacial sobre polígono de SJL
+│   │   ├── gemini.ts              # Integración con Google Gen AI SDK
+│   │   └── supabaseClient.ts      # Cliente Supabase seguro
 │   └── types/
-│       └── index.ts           # Definiciones de tipos TypeScript rigurosas
+│       └── index.ts               # Tipado estricto TypeScript
 ```
 
 ---
 
-## 🚀 5. Puesta en Marcha Local
+## 📐 5. Priorización Científica con Modelo Multicriterio AHP (Saaty)
 
-### Prerrequisitos
-- Node.js 20.x o superior
-- Cuenta en Supabase (PostgreSQL)
-- API Key de Google Gemini (Google AI Studio)
+Para evitar la discrecionalidad o que todas las quejas se clasifiquen como "urgentes", el sistema implementa la metodología **Analytic Hierarchy Process (AHP)** desarrollada por Thomas Saaty, basada en la calibración realizada por el Grupo 7:
 
-### Instalación
-
-1. **Clonar el repositorio:**
-   ```bash
-   git clone https://github.com/Pexxrx/Hilando-Voces-Grupo-7.git
-   cd Hilando-Voces-Grupo-7/hilando-voces
-   ```
-
-2. **Instalar dependencias:**
-   ```bash
-   npm install
-   ```
-
-3. **Configurar variables de entorno (`.env.local`):**
-   ```env
-   # Supabase Configuration
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-   # Google Gemini Copilot
-   GEMINI_API_KEY=your-gemini-api-key
-
-   # Ciberseguridad & Privacidad (Ley 29733)
-   DNI_SECRET_SALT=secret-salt-string-for-hmac-sha256
-   ```
-
-4. **Ejecutar servidor de desarrollo:**
-   ```bash
-   npm run dev
-   ```
-   Abrir [http://localhost:3000](http://localhost:3000) en el navegador.
-
-5. **Construir para producción:**
-   ```bash
-   npm run build
-   npm run start
-   ```
+- **Criterios y Ponderaciones Sociales:**
+  1. **Seguridad Ciudadana (48.47%):** Rutas escolares oscuras, pasajes peatonales en cerros y riesgo delictivo nocturno.
+  2. **Salud Física y Mental (22.68%):** Focos infecciosos, olores fétidos y basurales frente a colegios o mercados.
+  3. **Equidad Territorial (14.31%):** Asentamientos humanos en laderas altas y zonas sin cobertura municipal.
+  4. **Alcance Poblacional (8.88%):** Densidad de familias y transeúntes beneficiados directamente.
+  5. **Convivencia y Espacio Público (5.66%):** Revitalización de losas deportivas y parques infantiles.
+- **Razón de Consistencia (CR):** $CR = 0.0221$ ($< 0.10$), lo que certifica matemáticamente la coherencia de la matriz de comparaciones pareadas.
 
 ---
 
-## 👥 6. Equipo y Reconocimientos
+## ☁️ 6. Despliegue en Producción en Vercel
+
+La aplicación está completamente optimizada para su despliegue continuo en **Vercel**:
+
+### Checklist de Despliegue:
+1. **Conexión del Repositorio:**
+   - Iniciar sesión en [Vercel](https://vercel.com).
+   - Seleccionar **Add New Project** e importar el repositorio `Pexxrx/Hilando-Voces-Grupo-7`.
+2. **Configuración del Proyecto:**
+   - **Framework Preset:** `Next.js`
+   - **Root Directory:** Seleccionar `hilando-voces`
+   - **Build Command:** `npm run build` (o predeterminado de Next.js)
+   - **Output Directory:** `.next`
+3. **Variables de Entorno en Vercel Dashboard (`Settings -> Environment Variables`):**
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key-de-supabase
+   SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key-de-supabase
+   GEMINI_API_KEY=AIzaSy... (Obtenida en Google AI Studio)
+   DNI_SECRET_SALT=tu-sal-criptografica-aleatoria-de-64-caracteres
+   NEXT_PUBLIC_DEFAULT_UBIGEO=150132
+   NEXT_PUBLIC_DEFAULT_DISTRICT=San Juan de Lurigancho
+   ```
+4. **Desplegar:**
+   - Hacer clic en **Deploy**. Vercel compilará la aplicación y aprovisionará automáticamente el certificado SSL y el dominio HTTPS de producción (`https://tu-proyecto.vercel.app`).
+
+---
+
+## 👥 7. Equipo y Reconocimientos
 
 - **Proyecto:** Hilando Voces
 - **Concurso:** Warmi Innovathon 2026

@@ -40,7 +40,12 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const res = await fetch('/api/admin/reports');
+      const res = await fetch('/api/admin/reports', {
+        headers: {
+          'x-admin-email': profile.email,
+          'x-admin-role': profile.role,
+        },
+      });
       const data = await res.json();
       if (data.reports) {
         setReports(data.reports);
@@ -101,7 +106,11 @@ export function AdminDataProvider({ children }: { children: React.ReactNode }) {
     try {
       await fetch(`/api/admin/reports/${reportId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-email': profile.email,
+          'x-admin-role': profile.role,
+        },
         body: JSON.stringify({ status }),
       });
     } catch (e) {
