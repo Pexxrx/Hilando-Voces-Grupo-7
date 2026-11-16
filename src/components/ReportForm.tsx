@@ -18,7 +18,6 @@ import {
   Navigation,
   Check,
   X,
-  HelpCircle,
   Phone,
   CreditCard,
   Plus
@@ -35,7 +34,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
   const [step, setStep] = useState<number>(1);
   const [dni, setDni] = useState('');
   const [ubigeo, setUbigeo] = useState('');
-  // Checkbox de mayoría de edad desmarcado por defecto
   const [isAdultConfirmed, setIsAdultConfirmed] = useState(false);
   const [isPrivacyAccepted, setIsPrivacyAccepted] = useState(false);
   
@@ -43,7 +41,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
   const [description, setDescription] = useState('');
   const [reference, setReference] = useState('');
   
-  // 1. Permiso de ubicación ciudadana (para verificar presencia en SJL)
+  // 1. Verificación de ubicación real por GPS (sin confirmación manual ni saltos)
   const [userLocationVerified, setUserLocationVerified] = useState(false);
   const [verifyingLocation, setVerifyingLocation] = useState(false);
   const [locationVerificationError, setLocationVerificationError] = useState<string | null>(null);
@@ -54,12 +52,11 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
     lng: -76.9982,
   });
 
-  // 3. Fotografías del lugar (Mínimo 1, Máximo 3)
+  // 3. Fotografías del lugar
   const [photos, setPhotos] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Modales informativos
-  const [showLocationHelp, setShowLocationHelp] = useState(false);
   const [showUbigeoGuide, setShowUbigeoGuide] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [dniTab, setDniTab] = useState<'azul' | 'dnie' | 'dnie_2020'>('azul');
@@ -69,6 +66,8 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
   
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [step3Notice, setStep3Notice] = useState<string | null>(null);
+
   const [ticketResult, setTicketResult] = useState<{
     code: string;
     axis: string;
@@ -76,10 +75,11 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Verificación de permiso de ubicación ciudadana (Confirmar que está en SJL)
+  // Verificación real de ubicación ciudadana por GPS (sin saltos manuales)
   const handleRequestLocationPermission = () => {
     setVerifyingLocation(true);
     setLocationVerificationError(null);
+    setStep3Notice(null);
 
     if (!navigator.geolocation) {
       setLocationVerificationError('Tu dispositivo no soporta geolocalización directa.');
@@ -95,34 +95,24 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
         const inSjl = isPointInSJL(lat, lng);
         if (inSjl) {
           setUserLocationVerified(true);
-          // Si el usuario aún no movió el pin, centramos el problema en su ubicación aproximada
           setProblemCoords({ lat, lng });
           setLocationVerificationError(null);
         } else {
-          if (isDemo) {
-            setLocationVerificationError('Tu ubicación detectada está fuera de SJL. Puedes usar la confirmación de prueba.');
-          } else {
-            // Permitimos confirmar que reporta para SJL o reintentar
-            setLocationVerificationError('La señal de tu celular indica que estás fuera del área de San Juan de Lurigancho. Si te encuentras en el distrito, por favor asegúrate de tener el GPS activado.');
-          }
+          // Si está fuera del polígono, la lógica de implementación exige que esté en el área activa
+          setLocationVerificationError('Para registrar este reporte, es necesario que te encuentres dentro del área activa de atención comunitaria.');
         }
         setVerifyingLocation(false);
       },
       (error) => {
-        let msg = 'No fue posible acceder al permiso de ubicación. Por favor, activa la ubicación en tu teléfono.';
+        let msg = 'Por favor, activa la ubicación en tu dispositivo para poder situar el reporte.';
         if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Permiso denegado por el navegador. Puedes activarlo en los ajustes de tu navegador o confirmar tu presencia abajo.';
+          msg = 'El navegador no tiene permiso para acceder a la ubicación. Puedes activarlo en los ajustes de tu teléfono.';
         }
         setLocationVerificationError(msg);
         setVerifyingLocation(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  };
-
-  const handleSimulateSjlVerification = () => {
-    setUserLocationVerified(true);
-    setLocationVerificationError(null);
   };
 
   // Manejo de fotografías múltiples (1 a 3 fotos)
@@ -136,7 +126,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
     filesToProcess.forEach((file) => {
-      // Validar que sea archivo de imagen
       if (!file.type.startsWith('image/')) return;
 
       const reader = new FileReader();
@@ -146,6 +135,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             if (prev.length >= 3) return prev;
             return [...prev, reader.result as string];
           });
+          setStep3Notice(null);
         }
       };
       reader.readAsDataURL(file);
@@ -168,6 +158,33 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
     setAxis((prev) => (prev === selected ? null : selected));
   };
 
+  // Paso 3 hacia Paso 4 con validación amigable y humana
+  const handleProceedToStep4 = () => {
+    setStep3Notice(null);
+
+    if (!userLocationVerified) {
+      setStep3Notice('Por favor comparte tu ubicación para situar el punto del reporte.');
+      return;
+    }
+
+    if (!reference || reference.trim().length < 5) {
+      setStep3Notice('Por favor escribe una referencia o dirección conocida para que el equipo pueda llegar.');
+      return;
+    }
+
+    if (!description || description.trim().length < 10) {
+      setStep3Notice('Por favor cuéntanos un poco más sobre la situación del lugar.');
+      return;
+    }
+
+    if (photos.length < 1) {
+      setStep3Notice('Por favor adjunta al menos una foto para que las brigadas puedan ver el problema.');
+      return;
+    }
+
+    setStep(4);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
@@ -188,7 +205,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
     }
 
     if (!isPrivacyAccepted) {
-      setSubmitError('Por favor, confirma haber leído y aceptado la política de reporte anónimo.');
+      setSubmitError('Por favor, confirma haber leído la política de reporte anónimo.');
       return;
     }
 
@@ -198,27 +215,27 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
     }
 
     if (!userLocationVerified) {
-      setSubmitError('Por favor, confirma el permiso de ubicación para verificar tu presencia en el distrito.');
+      setSubmitError('Es necesario compartir tu ubicación para registrar el reporte.');
       return;
     }
 
     if (!reference || reference.trim().length < 5) {
-      setSubmitError('La referencia o dirección del lugar es obligatoria (al menos 5 caracteres).');
+      setSubmitError('Por favor escribe una referencia o dirección para ubicar el lugar.');
       return;
     }
 
     if (!description || description.trim().length < 10) {
-      setSubmitError('Por favor, bríndanos un breve detalle de la situación (al menos 10 caracteres).');
+      setSubmitError('Por favor cuéntanos un breve detalle de la situación.');
       return;
     }
 
     if (photos.length < 1) {
-      setSubmitError('Es obligatorio adjuntar al menos 1 fotografía del lugar (máximo 3).');
+      setSubmitError('Por favor adjunta al menos una foto del lugar.');
       return;
     }
 
     if (wantsToCoordinate && (!whatsapp || whatsapp.length < 9)) {
-      setSubmitError('Por favor, ingresa un número telefónico de 9 dígitos para la coordinación comunitaria.');
+      setSubmitError('Por favor, ingresa un número telefónico de 9 dígitos para coordinar la faena.');
       return;
     }
 
@@ -311,7 +328,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
           </span>
         </div>
 
-        {/* Barra de Progreso con el color principal #d30684 */}
+        {/* Barra de Progreso */}
         <div className="w-full bg-[#E7E7E5] h-2.5 rounded-full mt-2.5 overflow-hidden border border-[#D3B9B9]/50">
           <div 
             className="bg-[#d30684] h-full transition-all duration-300 rounded-full"
@@ -346,10 +363,10 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             </div>
 
             <div className="space-y-4">
-              {/* Campo DNI con estado visual dinámico */}
+              {/* Campo DNI */}
               <div>
                 <label className="block text-sm font-bold text-[#1a2527] mb-1.5">
-                  Número de DNI (8 dígitos):
+                  Número de DNI:
                 </label>
                 <input
                   type="text"
@@ -368,32 +385,31 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   }`}
                 />
 
-                {/* Mensaje dinámico de confirmación de DNI */}
                 <div className="mt-1.5 text-xs text-center font-medium">
                   {dni.length === 0 && (
                     <span className="text-slate-500">
-                      El campo está vacío. Ingresa los 8 dígitos de tu DNI.
+                      Ingresa los 8 números de tu documento.
                     </span>
                   )}
                   {dni.length > 0 && dni.length < 8 && (
                     <span className="text-[#ea580c] font-semibold">
-                      Faltan {8 - dni.length} dígitos para completar tu DNI.
+                      Faltan {8 - dni.length} números para completar tu DNI.
                     </span>
                   )}
                   {dni.length === 8 && (
                     <span className="text-[#16a34a] font-bold flex items-center justify-center space-x-1">
                       <CheckCircle2 className="w-4 h-4 text-[#16a34a]" />
-                      <span>DNI completado (8 dígitos)</span>
+                      <span>DNI completado</span>
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Campo de Ubigeo del DNI con botón a la Guía Visual RENIEC */}
+              {/* Campo Ubigeo */}
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
                   <label className="text-sm font-bold text-[#1a2527]">
-                    Código de Ubigeo (6 dígitos):
+                    Código de Ubigeo de tu DNI:
                   </label>
                   <button
                     type="button"
@@ -423,26 +439,23 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 />
 
                 <div className="mt-1 text-xs text-slate-500 text-center">
-                  {ubigeo.length === 0 && 'Escribe los 6 números del ubigeo de tu DNI (ej: 123456).'}
+                  {ubigeo.length === 0 && 'Escribe los 6 números del ubigeo de tu DNI.'}
                   {ubigeo.length > 0 && ubigeo.length < 6 && (
                     <span className="text-[#ea580c] font-semibold">
-                      Faltan {6 - ubigeo.length} dígitos para completar el ubigeo.
+                      Faltan {6 - ubigeo.length} números para completar el ubigeo.
                     </span>
                   )}
                   {ubigeo.length === 6 && (
                     <span className="text-[#16a34a] font-bold flex items-center justify-center space-x-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a]" />
-                      <span>Ubigeo completado (6 dígitos)</span>
+                      <span>Ubigeo completado</span>
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* ============================================================
-                  SECCIÓN FINAL: Mayoría de Edad (Desmarcado) y Anonimato
-                  ============================================================ */}
+              {/* Checks finales */}
               <div className="space-y-2.5 pt-2 border-t border-[#D3B9B9]/60">
-                {/* Check 1: Mayor de 18 años (Desmarcado por defecto) */}
                 <label className="flex items-center space-x-3 text-sm text-slate-800 cursor-pointer bg-[#FAF8F5] p-3 rounded-xl border border-[#D3B9B9]/70 hover:bg-[#FAF8F5]/80 transition-colors">
                   <input
                     type="checkbox"
@@ -453,7 +466,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   <span className="font-medium text-xs sm:text-sm">Declaro ser mayor de 18 años.</span>
                 </label>
 
-                {/* Check 2: Aceptación de política de anonimato con enlace amigable */}
                 <label className="flex items-start space-x-3 text-xs sm:text-sm text-slate-800 cursor-pointer bg-[#FAF8F5] p-3 rounded-xl border border-[#D3B9B9]/70 hover:bg-[#FAF8F5]/80 transition-colors">
                   <input
                     type="checkbox"
@@ -510,7 +522,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             </div>
 
             <div className="grid grid-cols-1 gap-3.5">
-              {/* Opción 1: Alumbrado (Mostaza dorada de la Paleta Perséfone) */}
+              {/* Opción 1: Alumbrado */}
               <button
                 type="button"
                 onClick={() => handleToggleAxis('alumbrado')}
@@ -536,7 +548,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 </div>
               </button>
 
-              {/* Opción 2: Limpieza de basura (Sin desmonte) */}
+              {/* Opción 2: Limpieza de basura */}
               <button
                 type="button"
                 onClick={() => handleToggleAxis('microbasurales')}
@@ -612,6 +624,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
 
         {/* ============================================================
             PASO 3: Ubicación, Mapa Interactivo, Referencia y Fotos
+            (Sin carteles robóticos ni botones saltados)
             ============================================================ */}
         {step === 3 && (
           <div className="space-y-6">
@@ -623,37 +636,35 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 Lugar del problema y detalles
               </h2>
               <p className="text-sm text-slate-600 mt-1">
-                Verifica que te encuentras en el distrito, coloca el pin en el mapa y detalla la situación.
+                Comparte tu ubicación, señala el punto en el mapa y explícanos qué ocurre.
               </p>
             </div>
 
-            {/* SECCIÓN 1: Permiso de Ubicación Ciudadana (Presencia en SJL) */}
+            {/* Aviso amigable y humano si falta algún campo */}
+            {step3Notice && (
+              <div className="p-3.5 rounded-2xl bg-[#FFFBEB] border-2 border-[#FDE68A] text-[#92400e] text-xs sm:text-sm flex items-center space-x-2.5">
+                <AlertCircle className="w-4 h-4 text-[#E4981E] shrink-0" />
+                <span className="font-semibold">{step3Notice}</span>
+              </div>
+            )}
+
+            {/* SECCIÓN 1: Permiso de Ubicación (Botón Compartir Ubicación, sin 'en SJL' y sin confirmaciones manuales) */}
             <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF8F5] border-2 border-[#D3B9B9] space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1">
-                  <span className="text-xs sm:text-sm font-bold text-[#1a2527] flex items-center space-x-1.5">
-                    <Navigation className="w-4 h-4 text-[#d30684]" />
-                    <span>Verificación de presencia en San Juan de Lurigancho:</span>
-                  </span>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Pedimos acceso a tu ubicación solo para confirmar que estás en el distrito. No se guardará ningún rastro ni coordenadas de tu persona.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowLocationHelp(true)}
-                  className="text-xs text-[#d30684] font-semibold hover:underline cursor-pointer shrink-0"
-                  title="¿Cómo cuidamos tu ubicación?"
-                >
-                  <HelpCircle className="w-4 h-4" />
-                </button>
+              <div className="space-y-1">
+                <span className="text-xs sm:text-sm font-bold text-[#1a2527] flex items-center space-x-1.5">
+                  <Navigation className="w-4 h-4 text-[#d30684]" />
+                  <span>Ubicación para el reporte:</span>
+                </span>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Necesitamos confirmar tu ubicación para que las brigadas sepan exactamente a qué zona acudir.
+                </p>
               </div>
 
               {userLocationVerified ? (
                 <div className="bg-white p-3.5 rounded-xl border border-[#16a34a]/40 flex items-center justify-between shadow-sm">
                   <div className="flex items-center space-x-2 text-xs sm:text-sm font-bold text-[#16a34a]">
                     <CheckCircle2 className="w-5 h-5 text-[#16a34a] shrink-0" />
-                    <span>Ubicación verificada en San Juan de Lurigancho</span>
+                    <span>Ubicación confirmada</span>
                   </div>
                   <button
                     type="button"
@@ -675,20 +686,20 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                     <MapPin className="w-4 h-4 text-white" />
                     <span>
                       {verifyingLocation
-                        ? 'Verificando señal de ubicación...'
-                        : 'Dar permiso para verificar mi ubicación en SJL'}
+                        ? 'Obteniendo ubicación...'
+                        : 'Compartir ubicación'}
                     </span>
                   </button>
 
                   {locationVerificationError && (
-                    <div className="p-3 rounded-xl bg-[#F3E8E8] border border-[#d30684]/30 text-xs text-[#8c472f] space-y-1.5">
+                    <div className="p-3 rounded-xl bg-[#F3E8E8] border border-[#d30684]/30 text-xs text-[#8c472f] space-y-1">
                       <p className="font-semibold">{locationVerificationError}</p>
                       <button
                         type="button"
-                        onClick={handleSimulateSjlVerification}
-                        className="font-bold text-[#d30684] underline hover:text-[#bd0474] cursor-pointer block"
+                        onClick={handleRequestLocationPermission}
+                        className="font-bold text-[#d30684] underline hover:text-[#bd0474] cursor-pointer block mt-1"
                       >
-                        Confirmar que me encuentro en San Juan de Lurigancho
+                        Reintentar ubicación
                       </button>
                     </div>
                   )}
@@ -696,13 +707,13 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               )}
             </div>
 
-            {/* SECCIÓN 2: Mapa Interactivo para Ubicar el Problema */}
-            <div className="space-y-2">
+            {/* SECCIÓN 2: Mapa Interactivo con Leaflet sin bugs */}
+            <div className="space-y-1.5">
               <label className="block text-sm font-bold text-[#1a2527]">
                 Señala el lugar del problema en el mapa:
               </label>
               <p className="text-xs text-slate-600 leading-snug">
-                Toca cualquier calle o arrastra el marcador para fijar el punto donde está el poste, la basura o el parque a recuperar.
+                Toca cualquier calle o mueve el marcador para fijar la esquina o pasaje del reporte.
               </p>
               
               <LocationPickerMap
@@ -712,66 +723,54 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               />
             </div>
 
-            {/* SECCIÓN 3: Referencia Obligatoria */}
+            {/* SECCIÓN 3: Referencia Humana (Sin carteles de 'Obligatorio' ni 'Mínimo 5 caracteres') */}
             <div>
               <label className="block text-sm font-bold text-[#1a2527] mb-1">
-                Referencia o lugar donde ocurre <span className="text-[#d30684]">* (Obligatorio)</span>:
+                Dirección o referencia del lugar:
               </label>
               <input
                 type="text"
-                placeholder="Ejemplo: Pasaje Las Flores, frente a la bodega Don Pepe, paradero 4..."
+                placeholder="Ejemplo: Pasaje Las Flores, al frente de la farmacia o bodega..."
                 value={reference}
-                onChange={(e) => setReference(e.target.value)}
+                onChange={(e) => {
+                  setReference(e.target.value);
+                  if (step3Notice) setStep3Notice(null);
+                }}
                 className="w-full px-4 py-3.5 rounded-xl bg-white border-2 border-[#D3B9B9] text-sm text-[#1a2527] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d30684] shadow-sm font-medium"
               />
-              <div className="mt-1 flex items-center justify-between text-xs">
-                <span className="text-slate-500">
-                  Escribe una referencia clara para que las brigadas reconozcan el punto.
-                </span>
-                <span className={reference.trim().length >= 5 ? 'text-[#16a34a] font-bold' : 'text-[#ea580c]'}>
-                  {reference.trim().length >= 5 ? '✓ Referencia válida' : 'Mínimo 5 caracteres'}
-                </span>
-              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Escribe una referencia clara para que las brigadas reconozcan el punto fácilmente.
+              </p>
             </div>
 
-            {/* SECCIÓN 4: Detalle Breve de la Situación */}
+            {/* SECCIÓN 4: Detalle Breve (Sin carteles de '0/10' ni 'Detalle adecuado') */}
             <div>
               <label className="block text-sm font-bold text-[#1a2527] mb-1">
-                Detalle breve de la situación <span className="text-[#d30684]">* (Obligatorio)</span>:
+                ¿Qué ocurre en este lugar?
               </label>
               <textarea
                 rows={3}
-                placeholder="Cuéntanos brevemente qué ocurre para organizar las herramientas o apoyo necesario..."
+                placeholder="Cuéntanos brevemente qué necesita ser reparado, limpiado o iluminado..."
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (step3Notice) setStep3Notice(null);
+                }}
                 className="w-full px-4 py-3 rounded-xl bg-white border-2 border-[#D3B9B9] text-sm text-[#1a2527] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d30684] shadow-sm leading-relaxed"
               />
-              <div className="mt-1 flex items-center justify-between text-xs">
-                <span className="text-slate-500">
-                  Explica qué se necesita reparar o limpiar.
-                </span>
-                <span className={`font-semibold ${
-                  description.trim().length >= 10
-                    ? 'text-[#16a34a] font-bold'
-                    : description.trim().length > 0
-                    ? 'text-[#ea580c]'
-                    : 'text-slate-500'
-                }`}>
-                  {description.trim().length >= 10
-                    ? `✓ ${description.trim().length} caracteres`
-                    : `${description.trim().length}/10 caracteres (mínimo 10)`}
-                </span>
-              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Una breve explicación para que el equipo prepare las herramientas adecuadas.
+              </p>
             </div>
 
-            {/* SECCIÓN 5: Fotografías del Lugar (1 a 3 Fotos Obligatorias) */}
+            {/* SECCIÓN 5: Fotografías del Lugar (Sin carteles técnicos ni avisos de error) */}
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-bold text-[#1a2527]">
-                  Fotografías del lugar <span className="text-[#d30684]">* (Mínimo 1, máximo 3 fotos)</span>:
+                  Fotografías del lugar:
                 </label>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Acepta cualquier formato de foto (JPG, PNG, WEBP). Muestra el estado actual del lugar.
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Puedes adjuntar hasta 3 fotos para mostrar la situación.
                 </p>
               </div>
 
@@ -781,16 +780,13 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   {photos.map((photoUrl, index) => (
                     <div 
                       key={index} 
-                      className="relative rounded-2xl overflow-hidden border-2 border-[#D3B9B9] bg-slate-50 aspect-square shadow-sm group"
+                      className="relative rounded-2xl overflow-hidden border-2 border-[#D3B9B9] bg-slate-50 aspect-square shadow-sm"
                     >
                       <img 
                         src={photoUrl} 
-                        alt={`Foto ${index + 1}`} 
+                        alt="Foto adjunta" 
                         className="w-full h-full object-cover" 
                       />
-                      <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                        Foto {index + 1} de 3
-                      </div>
                       <button
                         type="button"
                         onClick={() => handleRemovePhoto(index)}
@@ -811,12 +807,12 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                     {photos.length === 0 ? (
                       <>
                         <Camera className="w-5 h-5 text-[#d30684]" />
-                        <span>Tomar o adjuntar foto (Foto 1 de 3)</span>
+                        <span>Tomar o subir foto</span>
                       </>
                     ) : (
                       <>
                         <Plus className="w-5 h-5 text-[#d30684]" />
-                        <span>Agregar otra foto ({photos.length} de 3 subidas)</span>
+                        <span>Subir otra foto</span>
                       </>
                     )}
                     <input
@@ -831,21 +827,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                   </label>
                 </div>
               )}
-
-              {/* Indicador de estado de fotos */}
-              <div className="text-xs font-medium">
-                {photos.length === 0 ? (
-                  <span className="text-[#ea580c] font-semibold flex items-center space-x-1">
-                    <AlertCircle className="w-3.5 h-3.5 text-[#ea580c]" />
-                    <span>Es necesario adjuntar al menos 1 fotografía para continuar.</span>
-                  </span>
-                ) : (
-                  <span className="text-[#16a34a] font-bold flex items-center space-x-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a]" />
-                    <span>{photos.length} de 3 fotografías adjuntas</span>
-                  </span>
-                )}
-              </div>
             </div>
 
             {/* Botones de Navegación del Paso 3 */}
@@ -859,14 +840,8 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               </button>
               <button
                 type="button"
-                disabled={
-                  !userLocationVerified ||
-                  reference.trim().length < 5 ||
-                  description.trim().length < 10 ||
-                  photos.length < 1
-                }
-                onClick={() => setStep(4)}
-                className="w-2/3 py-4 px-6 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-sm sm:text-base flex items-center justify-center space-x-2 transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-[#d30684]/20"
+                onClick={handleProceedToStep4}
+                className="w-2/3 py-4 px-6 rounded-2xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-sm sm:text-base flex items-center justify-center space-x-2 transition-all cursor-pointer shadow-md shadow-[#d30684]/20"
               >
                 <span>Continuar al Paso 4</span>
                 <ArrowRight className="w-5 h-5 text-white" />
@@ -920,7 +895,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
               {wantsToCoordinate && (
                 <div className="pt-2">
                   <label className="block text-sm font-bold text-[#1a2527] mb-1.5">
-                    Número de WhatsApp para coordinar (9 dígitos):
+                    Número de WhatsApp para coordinar:
                   </label>
                   <div className="relative">
                     <input
@@ -951,7 +926,7 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                     {whatsapp.length === 9 && (
                       <span className="text-[#16a34a] font-bold flex items-center space-x-1">
                         <CheckCircle2 className="w-3.5 h-3.5 text-[#16a34a]" />
-                        <span>Número de WhatsApp completado (9 dígitos)</span>
+                        <span>Número de WhatsApp completado</span>
                       </span>
                     )}
                   </div>
@@ -1161,7 +1136,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
 
       {/* ============================================================
           MODAL 2: POLÍTICA DE PROTECCIÓN Y ANONIMATO
-          (Solo el primer texto en cuadro, los demás como texto limpio)
           ============================================================ */}
       {showPrivacyPolicy && (
         <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
@@ -1183,12 +1157,10 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             </div>
 
             <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed max-h-[60vh] overflow-y-auto pr-1">
-              {/* Único cuadro destacado según lo pedido */}
               <div className="p-3.5 bg-[#fdf2f8] rounded-2xl border border-[#d30684]/30 text-[#1a2527] font-medium leading-relaxed">
                 <strong>Tu tranquilidad y seguridad son lo primero:</strong> Esta plataforma comunitaria está creada para que cualquier vecina o vecino pueda pedir mejoras en su calle con total confianza, sin trámites complicados y con la seguridad de que nadie sabrá quién hizo el reporte.
               </div>
 
-              {/* Punto 1: Texto limpio sin cuadro */}
               <div className="space-y-1">
                 <h4 className="font-bold text-[#1a2527] text-sm flex items-center space-x-2">
                   <span className="w-5 h-5 rounded-full bg-[#d30684] text-white text-xs flex items-center justify-center font-bold shrink-0">1</span>
@@ -1199,7 +1171,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 </p>
               </div>
 
-              {/* Punto 2: Texto limpio sin cuadro */}
               <div className="space-y-1">
                 <h4 className="font-bold text-[#1a2527] text-sm flex items-center space-x-2">
                   <span className="w-5 h-5 rounded-full bg-[#d30684] text-white text-xs flex items-center justify-center font-bold shrink-0">2</span>
@@ -1210,7 +1181,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 </p>
               </div>
 
-              {/* Punto 3: Texto limpio sin cuadro */}
               <div className="space-y-1">
                 <h4 className="font-bold text-[#1a2527] text-sm flex items-center space-x-2">
                   <span className="w-5 h-5 rounded-full bg-[#d30684] text-white text-xs flex items-center justify-center font-bold shrink-0">3</span>
@@ -1221,7 +1191,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 </p>
               </div>
 
-              {/* Punto 4: Texto limpio sin cuadro */}
               <div className="space-y-1">
                 <h4 className="font-bold text-[#1a2527] text-sm flex items-center space-x-2">
                   <span className="w-5 h-5 rounded-full bg-[#d30684] text-white text-xs flex items-center justify-center font-bold shrink-0">4</span>
@@ -1232,7 +1201,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
                 </p>
               </div>
 
-              {/* Punto 5: Texto limpio sin cuadro */}
               <div className="space-y-1">
                 <h4 className="font-bold text-[#1a2527] text-sm flex items-center space-x-2">
                   <span className="w-5 h-5 rounded-full bg-[#d30684] text-white text-xs flex items-center justify-center font-bold shrink-0">5</span>
@@ -1254,54 +1222,6 @@ export function ReportForm({ isDemo = false }: ReportFormProps) {
             >
               <CheckCircle2 className="w-4 h-4 text-white" />
               <span>Entendido, continuar con mi reporte</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================
-          MODAL 3: EXPLICACIÓN DE UBICACIÓN
-          ============================================================ */}
-      {showLocationHelp && (
-        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 sm:p-7 shadow-2xl border-2 border-[#D3B9B9] space-y-4">
-            <div className="flex items-center justify-between border-b border-[#D3B9B9] pb-3">
-              <div className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5 text-[#d30684]" />
-                <h3 className="font-heading font-bold text-lg text-[#1a2527]">
-                  Uso seguro de la ubicación
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowLocationHelp(false)}
-                className="text-slate-400 hover:text-[#1a2527] p-1 cursor-pointer"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed">
-              <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#D3B9B9]/70 space-y-1">
-                <strong className="text-[#1a2527] block">Verificación de presencia en el distrito:</strong>
-                <p className="text-slate-600">
-                  Pedimos permiso para asegurar que las alertas provengan de vecinas y vecinos de San Juan de Lurigancho.
-                </p>
-              </div>
-              <div className="p-3 bg-[#FAF8F5] rounded-xl border border-[#D3B9B9]/70 space-y-1">
-                <strong className="text-[#1a2527] block">Tu celular no es seguido ni rastreado:</strong>
-                <p className="text-slate-600">
-                  Solo se comprueba un único instante si la señal se encuentra en el distrito. No se almacena ningún dato de tu teléfono ni historial de movimientos.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowLocationHelp(false)}
-              className="w-full py-3.5 px-4 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white font-bold text-sm shadow-md cursor-pointer"
-            >
-              Comprendido, cerrar ventana
             </button>
           </div>
         </div>

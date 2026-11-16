@@ -13,10 +13,15 @@
 
   --neutral-dark: #1a2527;   /* Texto principal charcoal de alta legibilidad */
   --neutral-muted: #52606d;  /* Texto secundario */
-  --ochre-warm: #E4981E;     /* Mostaza dorada de acento */
-  --rose-coral: #E28A85;     /* Terracota coral */
-  --mauve-soft: #D3B9B9;     /* Malva suave para bordes */
-  --cream-blush: #F3E8E8;    /* Crema blush */
+  --ochre-warm: #E4981E;     /* Mostaza dorada de acento (Perséfone) */
+  --ochre-amber: #DA9832;    /* Ámbar cálido (Démeter) */
+  --rose-coral: #E28A85;     /* Terracota coral (Démeter) */
+  --rose-dusty: #C58B7E;     /* Rosa arcilla (Circe) */
+  --rose-peach: #E3B3A9;     /* Durazno empolvado (Circe) */
+  --mauve-soft: #D3B9B9;     /* Malva suave para bordes (Perséfone) */
+  --sage-light: #DAE3D9;     /* Salvia suave (Démeter) */
+  --sand-linen: #DACCAF;     /* Arena cálida (Circe) */
+  --cream-blush: #F3E8E8;    /* Crema blush (Démeter) */
   --canvas-bg: #FAF8F5;      /* Fondo papel artesanal orgánico */
   --surface-card: #FFFFFF;   /* Blanco puro para tarjetas */
 }
@@ -24,17 +29,19 @@
 body {
   background-color: var(--canvas-bg);
   color: var(--neutral-dark);
-  font-family: var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
-  letter-spacing: -0.011em;
+  letter-spacing: -0.015em;
   -webkit-tap-highlight-color: transparent;
 }
 
-h1, h2, h3, .font-heading {
-  font-family: var(--font-outfit), var(--font-plus-jakarta), sans-serif;
+h1, h2, h3, h4, .font-heading {
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 700;
 }
 
-/* Evitar zoom molesto en inputs en iPhone/Android en pantallas móviles */
+/* Evitar zoom molesto en inputs en pantallas móviles */
 input, select, textarea {
   font-size: 16px !important;
 }
@@ -60,13 +67,22 @@ button, a {
   background: #d30684;
 }
 
-/* Mapas Leaflet integrados con la paleta orgánica */
+/* Mapas Leaflet integrados */
 .leaflet-container {
   width: 100%;
   height: 100%;
   z-index: 10;
   background-color: #E7E7E5;
   border-radius: 1rem;
+  overflow: hidden;
+}
+
+.leaflet-tile-pane {
+  z-index: 2;
+}
+
+.leaflet-tile {
+  visibility: inherit !important;
 }
 
 .leaflet-popup-content-wrapper {

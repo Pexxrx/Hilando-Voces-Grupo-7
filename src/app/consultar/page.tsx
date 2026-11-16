@@ -226,7 +226,7 @@ function ConsultContent() {
         {savedTickets.length > 0 && !report && reportsByDni.length === 0 && (
           <div className="pt-4 border-t border-[#D3B9B9]/50">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-3">
-              Tus Reportes Recientes en este Teléfono:
+              Tus reportes guardados:
             </span>
             <div className="flex flex-wrap gap-2">
               {savedTickets.map((t) => (
