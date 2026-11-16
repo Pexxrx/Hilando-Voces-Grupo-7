@@ -23,7 +23,7 @@ export interface Report {
   coordinator_whatsapp?: string | null;
   
   // Seguridad y Privacidad (Token Anti-Spam en memoria, nunca se guarda DNI)
-  anti_spam_hash: string;
+  anti_spam_hash?: string;
   
   // Estados y Copiloto IA
   status: ReportStatus;

@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { GoogleIcon } from '@/components/GoogleIcon';
-import { Report, ReportAxis, ReportStatus, PriorityLevel } from '@/types';
+import { Report, ReportAxis, ReportStatus } from '@/types';
+import { ExtendedReport } from '@/data/mockReports';
 
 interface IncidentsManagerProps {
   reports: Report[];
@@ -22,23 +23,39 @@ export function IncidentsManager({
   onUpdateStatus,
 }: IncidentsManagerProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
-  const [axisFilter, setAxisFilter] = useState<string>('todos');
-  const [priorityFilter, setPriorityFilter] = useState<string>('todos');
+  const [activeFolder, setActiveFolder] = useState<string>('todos'); // 'todos', 'recibido', 'alta', 'en_evaluacion', 'faena_programada', 'resuelto'
+  const [starredIds, setStarredIds] = useState<Set<string>>(
+    new Set(reports.filter((r) => r.priority_level === 'alta').map((r) => r.id))
+  );
   const [updating, setUpdating] = useState(false);
 
-  // Filtrado de reportes
+  // Alternar estrella (marcar como prioritario / destacado)
+  const toggleStar = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setStarredIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Filtrado de incidencias estilo carpetas de correo Gmail
   const filtered = reports.filter((r) => {
-    if (statusFilter !== 'todos' && r.status !== statusFilter) return false;
-    if (axisFilter !== 'todos' && r.axis !== axisFilter) return false;
-    if (priorityFilter !== 'todos' && r.priority_level !== priorityFilter) return false;
+    if (activeFolder === 'recibido' && r.status !== 'recibido') return false;
+    if (activeFolder === 'alta' && !starredIds.has(r.id) && r.priority_level !== 'alta') return false;
+    if (activeFolder === 'en_evaluacion' && r.status !== 'en_evaluacion') return false;
+    if (activeFolder === 'faena_programada' && r.status !== 'faena_programada') return false;
+    if (activeFolder === 'resuelto' && r.status !== 'resuelto') return false;
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       const codeMatch = r.ticket_code.toLowerCase().includes(term);
       const descMatch = r.description.toLowerCase().includes(term);
       const refMatch = (r.reference || '').toLowerCase().includes(term);
-      if (!codeMatch && !descMatch && !refMatch) return false;
+      const summaryMatch = (r.ai_summary || '').toLowerCase().includes(term);
+      const coordMatch = ((r as ExtendedReport).coordinator_name || '').toLowerCase().includes(term);
+      if (!codeMatch && !descMatch && !refMatch && !summaryMatch && !coordMatch) return false;
     }
 
     return true;
@@ -49,6 +66,32 @@ export function IncidentsManager({
     setUpdating(true);
     await onUpdateStatus(selectedReport.id, newStatus);
     setUpdating(false);
+  };
+
+  const getAxisPill = (axis: ReportAxis) => {
+    switch (axis) {
+      case 'alumbrado':
+        return (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFFBEB] text-[#E4981E] border border-[#FDE68A] flex items-center space-x-1 shrink-0">
+            <GoogleIcon name="lightbulb" size={12} className="text-[#E4981E]" />
+            <span>Alumbrado</span>
+          </span>
+        );
+      case 'microbasurales':
+        return (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FEF2F2] text-[#E28A85] border border-red-200 flex items-center space-x-1 shrink-0">
+            <GoogleIcon name="delete_sweep" size={12} className="text-[#E28A85]" />
+            <span>Basural</span>
+          </span>
+        );
+      case 'espacios_recreativos':
+        return (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F0FDF4] text-[#588157] border border-emerald-200 flex items-center space-x-1 shrink-0">
+            <GoogleIcon name="park" size={12} className="text-[#588157]" />
+            <span>Espacio</span>
+          </span>
+        );
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -80,335 +123,453 @@ export function IncidentsManager({
     }
   };
 
-  const getAxisBadge = (axis: string) => {
-    switch (axis) {
-      case 'alumbrado':
-        return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFFBEB] text-[#E4981E] border border-[#FDE68A]">
-            Alumbrado
-          </span>
-        );
-      case 'microbasurales':
-        return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF1F2] text-[#E28A85] border border-[#FECDD3]">
-            Limpieza
-          </span>
-        );
-      case 'espacios_recreativos':
-        return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F0FDF4] text-[#588157] border border-[#BBF7D0]">
-            Espacios
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
+  const activeExt = selectedReport as ExtendedReport | null;
 
   return (
-    <div className="space-y-5">
-      {/* Barra de Filtros y Búsqueda */}
-      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-3">
-        <div className="flex flex-col md:flex-row gap-3">
-          {/* Buscador */}
+    <div className="space-y-4">
+      {/* BARRA SUPERIOR ESTILO GMAIL: Búsqueda y Pestañas de Carpetas */}
+      <div className="bg-white p-4 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Caja de Búsqueda estilo Gmail */}
           <div className="relative flex-1">
+            <GoogleIcon
+              name="search"
+              size={18}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
             <input
               type="text"
-              placeholder="Buscar por código (#HV-SJL-...), calle o descripción..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-[#D3B9B9] text-xs sm:text-sm text-[#1a2527] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#d30684] shadow-sm font-medium"
+              placeholder="Buscar en el buzón comunitario por código, zona, vecino o resumen..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs text-[#1a2527] placeholder:text-slate-400 focus:outline-none focus:border-[#d30684] focus:ring-1 focus:ring-[#d30684]"
             />
-            <div className="absolute left-3 top-2.5">
-              <GoogleIcon name="search" size={18} className="text-slate-400" />
-            </div>
           </div>
 
-          {/* Filtros Dropdown */}
-          <div className="flex flex-wrap sm:flex-nowrap gap-2 text-xs">
-            {/* Estado */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl bg-white border border-[#D3B9B9] text-xs font-bold text-[#1a2527] focus:outline-none focus:ring-2 focus:ring-[#d30684] cursor-pointer shadow-sm"
-            >
-              <option value="todos">Todos los Estados</option>
-              <option value="recibido">Recibido</option>
-              <option value="en_evaluacion">En Evaluación</option>
-              <option value="faena_programada">Faena Programada</option>
-              <option value="resuelto">Resuelto</option>
-            </select>
-
-            {/* Eje */}
-            <select
-              value={axisFilter}
-              onChange={(e) => setAxisFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl bg-white border border-[#D3B9B9] text-xs font-bold text-[#1a2527] focus:outline-none focus:ring-2 focus:ring-[#d30684] cursor-pointer shadow-sm"
-            >
-              <option value="todos">Todos los Ejes</option>
-              <option value="alumbrado">Alumbrado</option>
-              <option value="microbasurales">Limpieza de basura</option>
-              <option value="espacios_recreativos">Espacios comunitarios</option>
-            </select>
-
-            {/* Prioridad */}
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl bg-white border border-[#D3B9B9] text-xs font-bold text-[#1a2527] focus:outline-none focus:ring-2 focus:ring-[#d30684] cursor-pointer shadow-sm"
-            >
-              <option value="todos">Todas las Prioridades</option>
-              <option value="alta">Alta</option>
-              <option value="media">Media</option>
-              <option value="baja">Baja</option>
-            </select>
+          <div className="flex items-center space-x-2 shrink-0 text-xs text-slate-500 font-medium">
+            <span>
+              Mostrando <strong className="text-[#1a2527]">{filtered.length}</strong> de{' '}
+              <strong className="text-[#1a2527]">{reports.length}</strong> incidencias
+            </span>
           </div>
         </div>
 
-        {/* Resumen de resultados */}
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-[#D3B9B9]/50">
-          <span>Mostrando <strong>{filtered.length}</strong> de {reports.length} reportes registrados</span>
-          {(searchTerm || statusFilter !== 'todos' || axisFilter !== 'todos' || priorityFilter !== 'todos') && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchTerm('');
-                setStatusFilter('todos');
-                setAxisFilter('todos');
-                setPriorityFilter('todos');
-              }}
-              className="text-[#d30684] font-bold hover:underline cursor-pointer"
-            >
-              Limpiar filtros
-            </button>
-          )}
+        {/* Pestañas de Carpetas tipo Gmail */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-[#D3B9B9]/50">
+          <button
+            type="button"
+            onClick={() => setActiveFolder('todos')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeFolder === 'todos'
+                ? 'bg-[#1a2527] text-white shadow-sm'
+                : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <GoogleIcon name="inbox" size={16} />
+            <span>Todos</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
+              {reports.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFolder('alta')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeFolder === 'alta'
+                ? 'bg-[#E4981E] text-white shadow-sm'
+                : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <GoogleIcon name="star" filled size={16} className={activeFolder === 'alta' ? 'text-white' : 'text-[#E4981E]'} />
+            <span>Prioridad Alta</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
+              {starredIds.size}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFolder('recibido')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeFolder === 'recibido'
+                ? 'bg-red-600 text-white shadow-sm'
+                : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <GoogleIcon name="mark_email_unread" size={16} />
+            <span>Recibidos</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
+              {reports.filter((r) => r.status === 'recibido').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFolder('en_evaluacion')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeFolder === 'en_evaluacion'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <GoogleIcon name="find_in_page" size={16} />
+            <span>En Evaluación</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
+              {reports.filter((r) => r.status === 'en_evaluacion').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFolder('faena_programada')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeFolder === 'faena_programada'
+                ? 'bg-[#E4981E] text-white shadow-sm'
+                : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <GoogleIcon name="calendar_month" size={16} />
+            <span>Faenas</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
+              {reports.filter((r) => r.status === 'faena_programada').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveFolder('resuelto')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer ${
+              activeFolder === 'resuelto'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-[#FAF8F5] text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <GoogleIcon name="check_circle" size={16} />
+            <span>Resueltos</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-current">
+              {reports.filter((r) => r.status === 'resuelto').length}
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* Layout Master-Detail: Lista a la izquierda, Detalle a la derecha */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Columna Izquierda: Lista de Tarjetas (5 columnas en LG) */}
-        <div className="lg:col-span-5 space-y-3 max-h-[750px] overflow-y-auto pr-1">
-          {filtered.length === 0 ? (
-            <div className="bg-white p-8 rounded-3xl border border-[#D3B9B9] text-center text-slate-500 space-y-2">
-              <GoogleIcon name="search_off" size={32} className="text-slate-400 mx-auto" />
-              <p className="text-xs font-bold text-[#1a2527]">No se encontraron reportes con estos criterios.</p>
-              <p className="text-[11px]">Intenta cambiando los filtros o el término de búsqueda.</p>
-            </div>
-          ) : (
-            filtered.map((report) => {
-              const isSelected = selectedReport?.id === report.id;
-              return (
-                <div
-                  key={report.id}
-                  onClick={() => onSelectReport(report)}
-                  className={`p-4 rounded-3xl border-2 transition-all cursor-pointer space-y-2 text-left ${
-                    isSelected
-                      ? 'border-[#d30684] bg-white ring-2 ring-[#d30684]/20 shadow-md'
-                      : 'border-[#D3B9B9] bg-white hover:border-[#E28A85] hover:bg-[#FAF8F5]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-black text-[#d30684]">
-                      {report.ticket_code}
-                    </span>
-                    <div className="flex items-center space-x-1.5">
-                      {getAxisBadge(report.axis)}
+      {/* BANDEJA SPLIT-VIEW ESTILO GMAIL: Lista a la Izquierda + Panel de Lectura a la Derecha */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[640px]">
+        {/* COLUMNA IZQUIERDA: Lista de correos / reportes (Gmail Message List) */}
+        <div className="lg:col-span-5 bg-white rounded-3xl border border-[#D3B9B9] shadow-sm flex flex-col overflow-hidden max-h-[750px]">
+          <div className="p-3.5 bg-[#FAF8F5] border-b border-[#D3B9B9] flex items-center justify-between text-xs text-slate-600 font-bold">
+            <span>Buzón de Incidencias ({filtered.length})</span>
+            <span className="text-[11px] text-slate-400 font-normal">Orden cronológico</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto divide-y divide-[#D3B9B9]/50">
+            {filtered.length === 0 ? (
+              <div className="p-10 text-center text-slate-400 space-y-2">
+                <GoogleIcon name="inbox" size={36} className="text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-[#1a2527]">No se encontraron reportes en esta carpeta.</p>
+                <p className="text-[11px] text-slate-500">Prueba ajustando los filtros o el término de búsqueda.</p>
+              </div>
+            ) : (
+              filtered.map((report) => {
+                const isSelected = selectedReport?.id === report.id;
+                const isStarred = starredIds.has(report.id);
+                const ext = report as ExtendedReport;
+                const senderName = ext.coordinator_name || 'Vecino Anónimo';
+
+                return (
+                  <div
+                    key={report.id}
+                    onClick={() => onSelectReport(report)}
+                    className={`p-3.5 transition-all cursor-pointer select-none space-y-1.5 relative ${
+                      isSelected
+                        ? 'bg-[#fdf2f8] border-l-4 border-l-[#d30684]'
+                        : 'hover:bg-[#FAF8F5]/80 bg-white border-l-4 border-l-transparent'
+                    }`}
+                  >
+                    {/* Fila 1: Estrella + Remitente / Zona + Fecha */}
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={(e) => toggleStar(e, report.id)}
+                          className="text-slate-300 hover:text-[#E4981E] transition-colors cursor-pointer"
+                          title={isStarred ? 'Quitar de destacados' : 'Marcar como prioritario'}
+                        >
+                          <GoogleIcon
+                            name="star"
+                            filled={isStarred}
+                            size={16}
+                            className={isStarred ? 'text-[#E4981E]' : 'text-slate-300'}
+                          />
+                        </button>
+                        <span className="font-bold text-[#1a2527] line-clamp-1 max-w-[150px]">
+                          {senderName}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-1.5">
+                        {getAxisPill(report.axis)}
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {new Date(report.created_at).toLocaleDateString([], {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Fila 2: Asunto (Resumen Copiloto Gemini) */}
+                    <div className="text-xs font-bold text-slate-800 line-clamp-1">
+                      {report.ai_summary || report.ticket_code}
+                    </div>
+
+                    {/* Fila 3: Snippet del Testimonio del Vecino */}
+                    <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                      {report.description}
+                    </p>
+
+                    {/* Fila 4: Código de Ticket y Estado */}
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="font-mono text-[10px] font-black text-[#d30684]">
+                        {report.ticket_code}
+                      </span>
                       {getStatusBadge(report.status)}
                     </div>
                   </div>
-
-                  <p className="text-xs text-[#1a2527] font-medium line-clamp-2 leading-relaxed">
-                    "{report.description}"
-                  </p>
-
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-[#D3B9B9]/50">
-                    <span className="truncate max-w-[180px] font-semibold text-slate-700">
-                      📍 {report.reference || 'Sin dirección específica'}
-                    </span>
-                    <span>{new Date(report.created_at).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
 
-        {/* Columna Derecha: Inspector / Detalle de Triaje (7 columnas en LG) */}
-        <div className="lg:col-span-7">
+        {/* COLUMNA DERECHA: Panel de Lectura y Dossier del Reporte (Gmail Reading Pane) */}
+        <div className="lg:col-span-7 bg-white rounded-3xl border border-[#D3B9B9] shadow-sm flex flex-col overflow-hidden max-h-[750px]">
           {selectedReport ? (
-            <div className="bg-white p-6 sm:p-7 rounded-3xl border-2 border-[#D3B9B9] shadow-sm space-y-6 sticky top-20">
-              {/* Encabezado del Expediente */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D3B9B9] pb-4">
-                <div>
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500 block">
-                    Expediente Comunitario
-                  </span>
-                  <div className="flex items-center space-x-3 mt-0.5">
-                    <h3 className="font-heading font-black text-2xl text-[#d30684] font-mono">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+              {/* CABECERA DEL CORREO / DOSSIER */}
+              <div className="border-b border-[#D3B9B9]/60 pb-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono text-sm font-black text-[#d30684] bg-[#fdf2f8] px-2.5 py-1 rounded-xl border border-[#d30684]/20">
                       {selectedReport.ticket_code}
-                    </h3>
+                    </span>
+                    {getAxisPill(selectedReport.axis)}
                     {getStatusBadge(selectedReport.status)}
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-2">
-                  {getAxisBadge(selectedReport.axis)}
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-slate-100 text-slate-700 border border-slate-300">
-                    Prioridad: {selectedReport.priority_level}
-                  </span>
-                </div>
-              </div>
-
-              {/* Testimonio Ciudadano */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1a2527] block">
-                  Voz del Vecino (Testimonio Textual):
-                </span>
-                <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs sm:text-sm text-slate-800 leading-relaxed italic">
-                  "{selectedReport.description}"
-                </div>
-              </div>
-
-              {/* Referencia y Ubicación */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9]">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
-                    Dirección o Referencia:
-                  </span>
-                  <span className="font-bold text-[#1a2527] block">
-                    {selectedReport.reference || 'Ubicación identificada por coordenadas'}
+                  <span className="text-xs text-slate-500">
+                    Registrado el{' '}
+                    {new Date(selectedReport.created_at).toLocaleString([], {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
-                      Coordenadas GPS:
-                    </span>
-                    <span className="font-mono font-bold text-[#1a2527]">
-                      {selectedReport.latitude.toFixed(4)}, {selectedReport.longitude.toFixed(4)}
-                    </span>
+                {/* Remitente y Contacto Comunal */}
+                <div className="flex items-start justify-between gap-3 pt-1">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#d30684] to-[#1a2527] text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                      {(activeExt?.coordinator_name || 'V').slice(0, 1)}
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-heading font-extrabold text-sm text-[#1a2527]">
+                          {activeExt?.coordinator_name || 'Vecino/a de San Juan de Lurigancho'}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500 bg-[#FAF8F5] px-2 py-0.5 rounded-md border border-[#D3B9B9]">
+                          Ubigeo: {selectedReport.ubigeo || '150132'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        📍 {selectedReport.reference || 'San Juan de Lurigancho, Lima'}
+                      </p>
+                    </div>
                   </div>
-                  <a
-                    href={`https://www.google.com/maps?q=${selectedReport.latitude},${selectedReport.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-xl bg-white border border-[#D3B9B9] text-[#d30684] hover:bg-[#fdf2f8] transition-colors cursor-pointer"
-                    title="Ver en Google Maps"
-                  >
-                    <GoogleIcon name="open_in_new" size={16} />
-                  </a>
+
+                  {/* Botón directo de WhatsApp para la líder */}
+                  {selectedReport.coordinator_whatsapp && (
+                    <a
+                      href={`https://wa.me/51${selectedReport.coordinator_whatsapp}?text=${encodeURIComponent(
+                        `Hola ${activeExt?.coordinator_name || 'vecino/a'}, te saludamos de la coordinación comunitaria de Hilando Voces respecto a tu reporte ${selectedReport.ticket_code}.`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer shrink-0"
+                    >
+                      <GoogleIcon name="chat" size={14} />
+                      <span>WhatsApp ({selectedReport.coordinator_whatsapp})</span>
+                    </a>
+                  )}
                 </div>
               </div>
 
-              {/* Fotografía de la problemática (Antes) */}
-              {selectedReport.photo_before_url && (
-                <div className="space-y-1.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#1a2527] block">
-                    Evidencia Fotográfica Inicial ("Antes"):
-                  </span>
-                  <div className="rounded-2xl border-2 border-[#D3B9B9] overflow-hidden bg-slate-50 max-h-56">
-                    <img
-                      src={selectedReport.photo_before_url}
-                      alt="Evidencia del problema"
-                      className="w-full h-56 object-cover"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Asistente Copiloto Gemini IA */}
-              <div className="p-4 rounded-2xl bg-[#fdf2f8] border-2 border-[#d30684]/30 space-y-2">
-                <div className="flex items-center space-x-2 text-xs font-extrabold text-[#d30684]">
-                  <GoogleIcon name="auto_awesome" filled size={16} className="text-[#d30684]" />
-                  <span>Análisis de Copiloto Gemini 3.8 Flash</span>
-                </div>
-                <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                  {selectedReport.ai_summary || 'Análisis en proceso por el asistente barrial.'}
-                </p>
-                {selectedReport.ai_tags && selectedReport.ai_tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {selectedReport.ai_tags.map((tag, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white text-[#d30684] border border-[#d30684]/20"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Vecino Coordinador Voluntario */}
-              {selectedReport.wants_to_coordinate && selectedReport.coordinator_whatsapp && (
-                <div className="p-3.5 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-[#92400e] block">Vecino disponible para apoyar:</span>
-                    <span className="text-[11px] text-slate-600">Marcó deseo de coordinar la faena barrial</span>
-                  </div>
-                  <a
-                    href={`https://api.whatsapp.com/send?phone=51${selectedReport.coordinator_whatsapp}&text=${encodeURIComponent(
-                      `Hola vecino/a, te contactamos desde Hilando Voces SJL para coordinar la faena comunitaria de tu reporte ${selectedReport.ticket_code}.`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer"
-                  >
-                    <GoogleIcon name="call" filled size={14} className="text-white" />
-                    <span>WhatsApp</span>
-                  </a>
-                </div>
-              )}
-
-              {/* Barra de Acciones de Triaje para la Lideresa */}
-              <div className="pt-2 border-t border-[#D3B9B9] space-y-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1a2527] block">
-                  Acciones de Gestión para este Caso:
-                </span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* BARRA DE ACCIONES DE GESTIÓN RÁPIDA */}
+              <div className="bg-[#FAF8F5] p-3 rounded-2xl border border-[#D3B9B9] flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-700">Acciones de Autogestión:</span>
+                <div className="flex flex-wrap items-center gap-2">
                   {selectedReport.status !== 'en_evaluacion' && (
                     <button
                       type="button"
                       disabled={updating}
                       onClick={() => handleStatusChange('en_evaluacion')}
-                      className="py-2.5 px-3 rounded-xl border border-[#D3B9B9] hover:bg-[#FAF8F5] text-xs font-bold text-slate-700 flex items-center justify-center space-x-1 transition-all cursor-pointer disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center space-x-1 transition-colors cursor-pointer"
                     >
-                      <GoogleIcon name="pending_actions" size={16} />
-                      <span>En Evaluación</span>
+                      <GoogleIcon name="manage_search" size={14} />
+                      <span>Poner En Evaluación</span>
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => onScheduleFaena(selectedReport)}
-                    className="py-2.5 px-3 rounded-xl bg-[#E4981E] hover:bg-[#DA9832] text-white text-xs font-bold shadow-sm flex items-center justify-center space-x-1 transition-all cursor-pointer"
-                  >
-                    <GoogleIcon name="calendar_month" filled size={16} className="text-white" />
-                    <span>Programar Faena</span>
-                  </button>
+                  {selectedReport.status !== 'faena_programada' && selectedReport.status !== 'resuelto' && (
+                    <button
+                      type="button"
+                      onClick={() => onScheduleFaena(selectedReport)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-[#E4981E] border border-amber-200 text-xs font-bold flex items-center space-x-1 transition-colors cursor-pointer"
+                    >
+                      <GoogleIcon name="event" size={14} />
+                      <span>Programar Faena Barrial</span>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => onOpenResolveModal(selectedReport)}
-                    className="py-2.5 px-3 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white text-xs font-bold shadow-md shadow-[#d30684]/20 flex items-center justify-center space-x-1 transition-all cursor-pointer"
-                  >
-                    <GoogleIcon name="check_circle" filled size={16} className="text-white" />
-                    <span>Resolver Caso</span>
-                  </button>
+                  {selectedReport.status !== 'resuelto' && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenResolveModal(selectedReport)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center space-x-1 shadow-sm transition-all cursor-pointer"
+                    >
+                      <GoogleIcon name="task_alt" size={14} />
+                      <span>Resolver y Subir Foto Después</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* CARD: SÍNTESIS Y TRIAJE DEL COPILOTO GEMINI 3.8 FLASH */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-[#fdf2f8] to-white border border-[#d30684]/30 space-y-2.5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-[#d30684] animate-pulse" />
+                    <span className="font-heading font-black text-xs uppercase tracking-wider text-[#d30684] flex items-center space-x-1">
+                      <GoogleIcon name="smart_toy" size={16} />
+                      <span>Síntesis y Triaje del Copiloto Gemini</span>
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#d30684] text-white">
+                    Prioridad: {selectedReport.priority_level.toUpperCase()}
+                  </span>
+                </div>
+
+                <p className="text-xs font-bold text-slate-800 leading-relaxed">
+                  {selectedReport.ai_summary || 'Resumen no disponible para este reporte.'}
+                </p>
+
+                {/* Etiquetas Temáticas */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {(selectedReport.ai_tags || ['SJL', 'Comunitario']).map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-0.5 rounded-lg bg-white border border-[#D3B9B9] text-[10px] font-semibold text-slate-600"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* CARD: VOZ DEL VECINO (TESTIMONIO CIUDADANO COMPLETO) */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-xs font-bold text-[#1a2527]">
+                  <GoogleIcon name="record_voice_over" size={16} className="text-[#d30684]" />
+                  <span>Voz del Vecino (Testimonio Ciudadano Original):</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#D3B9B9] text-xs text-slate-700 leading-relaxed italic relative">
+                  <span className="text-3xl text-[#d30684]/30 font-serif absolute top-1 left-2 select-none">“</span>
+                  <p className="pl-4 relative z-10 whitespace-pre-line font-sans not-italic text-slate-800">
+                    {selectedReport.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* CARD: DATOS DE COORDINACIÓN DE VOLUNTARIADO DE CAMPO */}
+              {activeExt?.wants_to_coordinate && (
+                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 text-xs">
+                  <div className="flex items-center space-x-2 text-amber-900 font-bold">
+                    <GoogleIcon name="handshake" size={16} className="text-[#E4981E]" />
+                    <span>Vecino Inscrito para Apoyar en Faena Barrial</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+                    <div>
+                      <span className="font-semibold block text-slate-500">Rol sugerido:</span>
+                      <span className="font-bold text-[#1a2527]">{activeExt.volunteer_role || 'Coordinador de Campo'}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold block text-slate-500">Herramientas que puede aportar:</span>
+                      <span className="font-bold text-[#1a2527]">
+                        {activeExt.tools_available?.join(', ') || 'Apoyo con mano de obra y refrigerios'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* EVIDENCIA VISUAL: ANTES Y DESPUÉS */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-[#1a2527] block">Evidencia Visual del Caso:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Foto Antes */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">
+                      Condición Inicial (Reporte Vecinal)
+                    </span>
+                    <div className="h-44 rounded-2xl overflow-hidden border border-[#D3B9B9] bg-slate-100 relative group">
+                      {selectedReport.photo_before_url ? (
+                        <img
+                          src={selectedReport.photo_before_url}
+                          alt="Foto antes"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                          <GoogleIcon name="image_not_supported" size={32} />
+                          <span>Sin foto registrada</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Foto Después */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
+                      Resultado Post-Faena Comunal
+                    </span>
+                    <div className="h-44 rounded-2xl overflow-hidden border border-[#D3B9B9] bg-slate-100 relative group">
+                      {selectedReport.photo_after_url ? (
+                        <img
+                          src={selectedReport.photo_after_url}
+                          alt="Foto después"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs p-4 text-center space-y-1">
+                          <GoogleIcon name="pending" size={28} className="text-amber-500" />
+                          <span className="font-bold text-slate-600">Pendiente de Ejecución</span>
+                          <span className="text-[10px] text-slate-400">
+                            La foto del después se registrará al finalizar la faena comunitaria.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-white p-12 rounded-3xl border-2 border-dashed border-[#D3B9B9] text-center text-slate-400 space-y-3">
-              <GoogleIcon name="touch_app" size={40} className="text-slate-300 mx-auto" />
-              <h4 className="font-heading font-bold text-base text-[#1a2527]">
-                Selecciona un reporte de la lista
-              </h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Toca cualquier caso a la izquierda para inspeccionar el testimonio vecinal, el análisis de Gemini IA y activar las acciones de faena comunitaria.
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 space-y-2">
+              <GoogleIcon name="mark_email_read" size={48} className="text-slate-300" />
+              <p className="text-sm font-bold text-[#1a2527]">Selecciona un reporte del buzón</p>
+              <p className="text-xs text-slate-500 max-w-xs">
+                Haz clic en cualquier incidencia de la izquierda para ver el análisis de Gemini, el testimonio y coordinar la faena.
               </p>
             </div>
           )}

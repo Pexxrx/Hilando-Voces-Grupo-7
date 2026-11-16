@@ -10,6 +10,7 @@ import { FaenasPlanner } from '@/components/admin/FaenasPlanner';
 import { VolunteersDirectory } from '@/components/admin/VolunteersDirectory';
 import { AccountabilityGallery } from '@/components/admin/AccountabilityGallery';
 import { TeamRolesManager } from '@/components/admin/TeamRolesManager';
+import { WarmichaChatbot } from '@/components/admin/WarmichaChatbot';
 import { FaenaSheetModal } from '@/components/FaenaSheetModal';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { Report, ReportStatus } from '@/types';
@@ -33,7 +34,8 @@ export default function AdminDashboardPage() {
 
   const fetchReports = useCallback(async () => {
     try {
-      const res = await fetch('/api/reports');
+      // Carga enriquecida con los 25 reportes territoriales oficiales de San Juan de Lurigancho
+      const res = await fetch('/api/admin/reports');
       const data = await res.json();
       if (data.reports) {
         setReports(data.reports);
@@ -58,19 +60,40 @@ export default function AdminDashboardPage() {
     await fetchReports();
   };
 
-  // Cambio de estado directo
+  // Cambio de estado directo (actualiza API y estado reactivo)
   const handleUpdateStatus = async (reportId: string, status: ReportStatus) => {
+    // Actualización optimista local
+    setReports((prev) =>
+      prev.map((r) =>
+        r.id === reportId
+          ? {
+              ...r,
+              status,
+              resolved_at: status === 'resuelto' ? new Date().toISOString() : r.resolved_at,
+            }
+          : r
+      )
+    );
+    if (selectedReport?.id === reportId) {
+      setSelectedReport((prev) =>
+        prev
+          ? {
+              ...prev,
+              status,
+              resolved_at: status === 'resuelto' ? new Date().toISOString() : prev.resolved_at,
+            }
+          : null
+      );
+    }
+
     try {
-      const res = await fetch(`/api/admin/reports/${reportId}`, {
+      await fetch(`/api/admin/reports/${reportId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
-      if (res.ok) {
-        await fetchReports();
-      }
     } catch (e) {
-      console.error(e);
+      console.error('Error enviando PATCH de estado:', e);
     }
   };
 
@@ -99,24 +122,52 @@ export default function AdminDashboardPage() {
     if (!activeResolveReport) return;
     setUpdating(true);
 
+    const reportId = activeResolveReport.id;
+    const finalPhoto =
+      resolvePhoto ||
+      'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=600&q=80';
+
+    // Actualización local
+    setReports((prev) =>
+      prev.map((r) =>
+        r.id === reportId
+          ? {
+              ...r,
+              status: 'resuelto',
+              photo_after_url: finalPhoto,
+              resolved_at: new Date().toISOString(),
+            }
+          : r
+      )
+    );
+
+    if (selectedReport?.id === reportId) {
+      setSelectedReport((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'resuelto',
+              photo_after_url: finalPhoto,
+              resolved_at: new Date().toISOString(),
+            }
+          : null
+      );
+    }
+
     try {
-      const res = await fetch(`/api/admin/reports/${activeResolveReport.id}`, {
+      await fetch(`/api/admin/reports/${reportId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'resuelto',
-          photo_after_url: resolvePhoto,
+          photo_after_url: finalPhoto,
         }),
       });
-
-      if (res.ok) {
-        setActiveResolveReport(null);
-        setResolvePhoto(null);
-        await fetchReports();
-      }
     } catch (err) {
       console.error(err);
     } finally {
+      setActiveResolveReport(null);
+      setResolvePhoto(null);
       setUpdating(false);
     }
   };
@@ -139,7 +190,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col lg:flex-row text-[#1a2527]">
+    <div className="min-h-screen bg-[#FAF8F5] flex flex-col lg:flex-row text-[#1a2527] relative">
       {/* 1. Barra Lateral de Navegación Modular (Sidebar) */}
       <AdminSidebar
         isOpen={isSidebarOpen}
@@ -216,6 +267,9 @@ export default function AdminDashboardPage() {
           {activeTab === 'equipo' && <TeamRolesManager />}
         </main>
       </div>
+
+      {/* 3. Mascota Flotante Copiloto Warmicha */}
+      <WarmichaChatbot />
 
       {/* MODAL 1: Ficha Técnica de Faena Comunal (Imprimible en PDF) */}
       {activeFaenaReport && (

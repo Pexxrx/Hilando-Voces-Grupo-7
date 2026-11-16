@@ -243,15 +243,9 @@ export default function AdminLoginPage() {
           </div>
         </div>
 
-        {/* Retorno al Portal Vecinal */}
-        <div className="text-center">
-          <Link
-            href="/"
-            className="text-xs text-slate-600 hover:text-[#d30684] transition-colors font-semibold flex items-center justify-center space-x-1"
-          >
-            <GoogleIcon name="arrow_back" size={14} />
-            <span>Volver al Formulario de Reporte Ciudadano</span>
-          </Link>
+        {/* Pie de Página Institucional */}
+        <div className="text-center text-[11px] text-slate-500 font-medium">
+          Sistema de Gestión Barrial · Exclusivo para Lideresas Comunitarias Acreditadas
         </div>
       </div>
     </div>

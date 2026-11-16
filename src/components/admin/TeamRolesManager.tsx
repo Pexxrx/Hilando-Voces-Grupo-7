@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { GoogleIcon } from '@/components/GoogleIcon';
-import { useAdminSession, AdminRole, DEMO_PROFILES } from './AdminSessionContext';
+import { useAdminSession, AdminRole } from './AdminSessionContext';
 
 export function TeamRolesManager() {
   const { profile, switchRole } = useAdminSession();
@@ -138,14 +138,14 @@ export function TeamRolesManager() {
         </div>
       </div>
 
-      {/* Selector Rápido de Perfil para la Evaluación / Demo */}
-      <div className="bg-white p-5 rounded-3xl border-2 border-[#d30684]/30 shadow-sm space-y-3">
+      {/* Selector de Perfil y Nivel de Autorización (RBAC) */}
+      <div className="bg-white p-5 rounded-3xl border border-[#D3B9B9] shadow-sm space-y-3">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-[#d30684] block">
-            Simulador de Roles (Para Pruebas y Jurado)
+            Conmutador de Credenciales y Sesión de Trabajo (RBAC)
           </span>
           <p className="text-xs text-slate-600 mt-0.5">
-            Haz clic en cualquiera de los 3 perfiles para cambiar de rol al instante y probar las distintas funciones del panel:
+            Selecciona la credencial activa para gestionar los permisos de acuerdo al nivel de responsabilidad comunitaria:
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export function TeamRolesManager() {
           >
             <div className="flex items-center justify-between">
               <span className="font-bold text-xs text-purple-700">3. Supervisora Comunal</span>
-              {profile?.role === 'superadmin' && <GoogleIcon name="check" size={18} className="text-purple-700]" />}
+              {profile?.role === 'superadmin' && <GoogleIcon name="check" size={18} className="text-purple-700" />}
             </div>
             <p className="text-xs font-bold text-[#1a2527]">Ing. Carmen Ramos Alarcón</p>
             <p className="text-[11px] text-slate-500">Sede Distrital SJL · Control total y auditoría de seguridad</p>

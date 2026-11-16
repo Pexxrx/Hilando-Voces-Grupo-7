@@ -34,18 +34,14 @@ export default function DemoPage() {
         {/* Formulario en Modo Demo */}
         <ReportForm isDemo={true} />
 
-        {/* Acceso Directo al Panel de Lideresas para la Evaluación */}
-        <div className="p-4 bg-white rounded-2xl border border-[#D3B9B9] text-center space-y-2 shadow-sm">
+        {/* Información Ciudadana */}
+        <div className="p-4 bg-white rounded-2xl border border-[#D3B9B9] text-center space-y-1 shadow-sm">
           <span className="text-xs font-bold text-[#1a2527] block">
-            ¿Quieres ver cómo recibe la lideresa este caso?
+            Plataforma Barrial de Autogestión Cívica
           </span>
-          <Link
-            href="/admin/login"
-            className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-[#d30684] hover:bg-[#bd0474] text-white text-xs font-bold transition-all shadow-sm"
-          >
-            <span>Ir al Panel de Lideresas con Copiloto Gemini IA</span>
-            <ExternalLink className="w-3.5 h-3.5 text-white" />
-          </Link>
+          <p className="text-[11px] text-slate-500">
+            Los reportes registrados se procesan de forma 100% anónima para organizar jornadas de limpieza, reparación y alumbrado.
+          </p>
         </div>
       </main>
 

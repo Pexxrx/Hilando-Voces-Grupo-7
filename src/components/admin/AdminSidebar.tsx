@@ -84,8 +84,8 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
         {/* Cabecera del Sidebar */}
         <div className="p-5 border-b border-[#D3B9B9]/70 space-y-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 rounded-2xl bg-[#fdf2f8] text-[#d30684] border border-[#d30684]/30 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#fdf2f8] text-[#d30684] border border-[#d30684]/30 flex items-center justify-center shadow-sm">
                 <GoogleIcon name="volunteer_activism" size={24} filled className="text-[#d30684]" />
               </div>
               <div>
@@ -96,7 +96,7 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
                   Panel de Lideresas SJL
                 </span>
               </div>
-            </Link>
+            </div>
 
             {/* Botón cerrar en móvil */}
             <button
@@ -242,13 +242,9 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
           </div>
 
           <div className="flex items-center justify-between pt-1 border-t border-[#D3B9B9]/50 text-xs">
-            <Link
-              href="/"
-              className="text-slate-600 hover:text-[#d30684] font-medium flex items-center space-x-1 transition-colors"
-            >
-              <GoogleIcon name="arrow_back" size={14} />
-              <span>Ver Portal</span>
-            </Link>
+            <span className="text-[10px] text-slate-500 font-semibold">
+              Sesión Comunitaria Activa
+            </span>
 
             <button
               type="button"
@@ -256,7 +252,7 @@ export function AdminSidebar({ isOpen, onClose, pendingCount = 0 }: AdminSidebar
               className="text-[#8c472f] hover:text-[#d30684] font-bold flex items-center space-x-1 cursor-pointer transition-colors"
             >
               <GoogleIcon name="logout" size={14} />
-              <span>Salir</span>
+              <span>Cerrar Sesión</span>
             </button>
           </div>
         </div>

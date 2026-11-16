@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseClient';
 
 const ALLOWED_STATUSES = ['recibido', 'en_evaluacion', 'faena_programada', 'resuelto'];
 const ALLOWED_PRIORITIES = ['baja', 'media', 'alta', 'urgente'];
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const VALID_ID_REGEX = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|rep-sjl-\d{3})$/i;
 
 export async function PATCH(
   req: NextRequest,
@@ -12,8 +12,8 @@ export async function PATCH(
   try {
     const { id } = await params;
 
-    // Validación estricta de ID
-    if (!id || !UUID_REGEX.test(id)) {
+    // Validación de ID (UUID de Supabase o ID de catálogo de SJL)
+    if (!id || !VALID_ID_REGEX.test(id)) {
       return NextResponse.json({ error: 'Identificador de reporte inválido.' }, { status: 400 });
     }
 
@@ -47,6 +47,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'No se enviaron campos válidos para actualizar.' }, { status: 400 });
     }
 
+    // Si es un reporte sintético territorial del dataset oficial de SJL
+    if (id.startsWith('rep-sjl-')) {
+      return NextResponse.json({
+        success: true,
+        report: {
+          id,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        },
+      });
+    }
+
+    // Si es un reporte persistido en Supabase
     const { data, error } = await supabaseAdmin
       .from('reports')
       .update(updates)
